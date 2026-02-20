@@ -4,7 +4,7 @@ import {
     registerLoggerBackend,
 } from '@aryazos/ts-base/logging';
 import pino from 'pino';
-import { loginWithPlaywright } from '../../cli/login';
+import { loginWithPuppeteer } from '../../cli/login';
 import { loadCliSession, saveCliSession } from '../../cli/sessionStore';
 import { setExportRoot } from '../downloader';
 import {
@@ -121,7 +121,7 @@ async function loginWithCredentials(
     headless: boolean,
 ): Promise<boolean> {
     try {
-        const result = await loginWithPlaywright({
+        const result = await loginWithPuppeteer({
             schoolId,
             username,
             password,
@@ -130,7 +130,10 @@ async function loginWithCredentials(
 
         return applySessionCookies(result.cookies, result.schoolId);
     } catch (error) {
-        logger.error('Playwright login failed', { schoolId, error });
+        logger.error('Puppeteer login failed', {
+            schoolId,
+            error: error instanceof Error ? error.message : String(error),
+        });
         return false;
     }
 }

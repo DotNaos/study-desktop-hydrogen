@@ -1,9 +1,26 @@
 /// <reference types="vite/client" />
 
-interface Window {
-  studySync?: {
-    getTheme: () => Promise<boolean>;
-    setTheme: (isDark: boolean) => Promise<void>;
-    onThemeChanged: (callback: (isDark: boolean) => void) => () => void;
-  };
+declare global {
+  interface Window {
+    studySync?: {
+      getApiBase?: () => Promise<string>;
+      getTheme?: () => Promise<{ mode: 'light' | 'dark' }>;
+      openExternal?: (url: string) => Promise<boolean>;
+      exportSaveAs?: (nodeId: string) => Promise<{
+        ok: boolean;
+        cancelled?: boolean;
+        outputPath?: string;
+        fileCount?: number;
+        error?: string;
+      }>;
+      exportShare?: (nodeId: string) => Promise<{
+        ok: boolean;
+        zipPath?: string;
+        fileCount?: number;
+        error?: string;
+      }>;
+    };
+  }
 }
+
+export {};

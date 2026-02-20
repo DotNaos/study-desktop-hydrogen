@@ -28,7 +28,10 @@ export const PORT = (() => {
 // Store schema with multi-school support
 export interface StoreSchema {
     selectedSchool?: string;
-    schools: Record<string, { username?: string; password?: string }>;
+    schools: Record<
+        string,
+        { username?: string; password?: string; credentialsHash?: string }
+    >;
     // Legacy format for migration
     moodle?: { username?: string; password?: string };
     exportRoot?: string;
