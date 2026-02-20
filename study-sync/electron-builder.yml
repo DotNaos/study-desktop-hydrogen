@@ -1,0 +1,40 @@
+appId: com.aryazos.study-sync
+productName: Aryazos Study Sync
+directories:
+    buildResources: build
+files:
+    - '!**/.vscode/*'
+    - '!src/*'
+    - '!electron.vite.config.*'
+    - '!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
+    - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+    - '!node_modules/@aryazos/**/*'
+asar: true
+asarUnpack:
+    - '**/*.node'
+extraMetadata:
+    main: out/main/index.js
+nodeGypRebuild: false
+buildDependenciesFromSource: false
+npmRebuild: false
+mac:
+    entitlementsInherit: build/entitlements.mac.plist
+    extendInfo:
+        - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
+        - NSCameraUsageDescription: Application requests access to the device's camera.
+    notarize: false
+    target:
+        - target: dmg
+          arch:
+              - arm64
+              - x64
+win:
+    target:
+        - target: nsis
+          arch:
+              - x64
+linux:
+    target:
+        - target: AppImage
+          arch:
+              - x64

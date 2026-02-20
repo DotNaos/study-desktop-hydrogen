@@ -1,0 +1,45 @@
+# Start with:
+##? Development:
+###? Run: docker compose -f docker-compose.yaml --env-file .env.dev --profile dev -p aryazos-study-web-dev up -d
+
+##? Production:
+###? Run: docker compose -f docker-compose.yaml --env-file .env.prod --profile prod -p aryazos-study-web-prod up -d
+
+services:
+    study-web-dev:
+        profiles: ["dev"]
+        build:
+            context: .
+            dockerfile: Dockerfile
+            target: dev
+            args:
+                VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY}
+        image: ghcr.io/dotnaos/aryazos-study-web:dev
+        ports:
+            - ${HOST_PORT}:${CONTAINER_PORT}
+        environment:
+            NODE_ENV: development
+            PORT: ${CONTAINER_PORT}
+            VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY}
+        volumes:
+            - .:/app
+            - study-web-node-modules:/app/node_modules
+
+    study-web-prod:
+        profiles: ["prod"]
+        build:
+            context: .
+            dockerfile: Dockerfile
+            target: prod
+            args:
+                VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY}
+        image: ghcr.io/dotnaos/aryazos-study-web:latest
+        ports:
+            - ${HOST_PORT}:${CONTAINER_PORT}
+        environment:
+            NODE_ENV: production
+            PORT: ${CONTAINER_PORT}
+            VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY}
+
+volumes:
+    study-web-node-modules:
