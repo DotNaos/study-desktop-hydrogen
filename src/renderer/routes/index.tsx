@@ -1,4 +1,4 @@
-import { Button, Checkbox, Dropdown, Tabs } from '@heroui/react';
+import { Button, Dropdown, Tabs } from '@heroui/react';
 import { createFileRoute } from '@tanstack/react-router';
 import {
     ArrowDown,
@@ -706,16 +706,19 @@ function Home() {
                         <div className="h-11 border-b border-slate-800 px-3 flex items-center justify-between gap-3">
                             <div className="text-sm font-medium">Explorer</div>
                             <div className="flex items-center gap-2">
-                                <Checkbox
-                                    size="sm"
-                                    color="default"
-                                    isSelected={hideCompleted}
-                                    onValueChange={setHideCompleted}
-                                >
-                                    <span className="text-xs text-slate-300 select-none">
+                                <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                                    <input
+                                        type="checkbox"
+                                        checked={hideCompleted}
+                                        onChange={(e) =>
+                                            setHideCompleted(e.target.checked)
+                                        }
+                                        className="w-3.5 h-3.5 rounded cursor-pointer accent-slate-400"
+                                    />
+                                    <span className="text-xs text-slate-300">
                                         Hide completed
                                     </span>
-                                </Checkbox>
+                                </label>
 
                                 <Dropdown>
                                     <Dropdown.Trigger>
