@@ -686,12 +686,55 @@ function Home() {
     }
 
     return (
-        <div className="h-screen flex flex-col bg-slate-950 text-slate-100">
-            <main className="flex-1 min-h-0">
+        <div className="h-screen flex bg-slate-950 text-slate-100">
+            {/* ── Sidenav ─────────────────────────────────────────────── */}
+            <nav className="w-12 shrink-0 flex flex-col items-center py-3 border-r border-slate-800 bg-slate-950">
+                {/* spacer top */}
+                <div className="flex-1" />
+
+                {/* List / Grid toggle */}
+                <div className="flex flex-col gap-1">
+                    {(
+                        [
+                            { key: 'list', Icon: List, label: 'Liste' },
+                            { key: 'grid', Icon: LayoutGrid, label: 'Grid' },
+                        ] as const
+                    ).map(({ key, Icon, label }) => (
+                        <button
+                            key={key}
+                            onClick={() => setViewMode(key)}
+                            title={label}
+                            className={cn(
+                                'w-8 h-8 flex items-center justify-center rounded-full transition-all',
+                                viewMode === key
+                                    ? 'bg-slate-700 text-white'
+                                    : 'text-slate-500 hover:text-slate-200 hover:bg-slate-800',
+                            )}
+                        >
+                            <Icon className="h-4 w-4" />
+                        </button>
+                    ))}
+                </div>
+
+                <div className="flex-1" />
+
+                {/* Logout */}
+                <button
+                    title="Logout"
+                    onClick={() => void onLogout()}
+                    className="w-8 h-8 flex items-center justify-center rounded-full text-slate-500 hover:text-red-400 hover:bg-slate-800 transition-all"
+                >
+                    <LogOut className="h-4 w-4" />
+                </button>
+            </nav>
+
+            {/* ── Main content ─────────────────────────────────────────── */}
+            <main className="flex-1 min-h-0 min-w-0 flex flex-col">
                 <div
                     ref={splitContainerRef}
-                    className="h-full w-full flex min-w-0"
+                    className="flex-1 min-h-0 w-full flex min-w-0"
                 >
+                    {/* ── Explorer panel ──────────────────────────────── */}
                     <section
                         style={{ width: `${explorerWidthPct}%` }}
                         className={cn(
@@ -704,9 +747,11 @@ function Home() {
                             explorerWidthPct <= 0.01 && 'pointer-events-none',
                         )}
                     >
-                        <div className="h-11 border-b border-slate-800 px-3 flex items-center justify-between gap-3">
-                            <div className="text-sm font-medium">Explorer</div>
-                            <div className="flex items-center gap-2">
+                        {/* Explorer toolbar */}
+                        <div className="h-11 border-b border-slate-800 px-3 flex items-center justify-between gap-2">
+                            <div className="text-sm font-medium text-slate-200">Explorer</div>
+                            <div className="flex items-center gap-1.5">
+                                {/* Hide completed */}
                                 <label className="flex items-center gap-1.5 cursor-pointer select-none">
                                     <Checkbox
                                         id="hide-completed"
@@ -716,38 +761,29 @@ function Home() {
                                         }
                                         className="h-3.5 w-3.5"
                                     />
-                                    <span className="text-xs text-slate-300">
-                                        Hide completed
+                                    <span className="text-xs text-slate-400">
+                                        Hide done
                                     </span>
                                 </label>
 
+                                {/* Sort dropdown */}
                                 <Dropdown>
                                     <Dropdown.Trigger>
-                                        <Button
-                                            size="sm"
-                                            className="h-8 min-w-0 bg-transparent border border-slate-700 text-slate-300 hover:text-white flex items-center gap-1.5 text-xs"
-                                        >
-                                            {completionSortOptions.find(
-                                                (o) =>
-                                                    o.value === completionSort,
-                                            )?.icon &&
-                                                (() => {
-                                                    const Icon =
-                                                        completionSortOptions.find(
-                                                            (o) =>
-                                                                o.value ===
-                                                                completionSort,
-                                                        )!.icon;
-                                                    return (
+                                        <button className="h-7 flex items-center gap-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800 px-2 rounded-full text-xs transition-all">
+                                            {(() => {
+                                                const opt = completionSortOptions.find(
+                                                    (o) => o.value === completionSort,
+                                                )!;
+                                                const Icon = opt.icon;
+                                                return (
+                                                    <>
                                                         <Icon className="h-3.5 w-3.5" />
-                                                    );
-                                                })()}
-                                            {completionSortOptions.find(
-                                                (o) =>
-                                                    o.value === completionSort,
-                                            )?.label || 'Sort'}
-                                            <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
-                                        </Button>
+                                                        {opt.label}
+                                                    </>
+                                                );
+                                            })()}
+                                            <ChevronDown className="h-3 w-3 opacity-60" />
+                                        </button>
                                     </Dropdown.Trigger>
                                     <Dropdown.Popover>
                                         <Dropdown.Menu
@@ -781,58 +817,15 @@ function Home() {
                                     </Dropdown.Popover>
                                 </Dropdown>
 
-                                <div className="flex items-center h-8 rounded-lg bg-slate-800/60 border border-slate-700/50 p-0.5 gap-0.5">
-                                    {(
-                                        [
-                                            {
-                                                key: 'list',
-                                                Icon: List,
-                                                label: 'Liste',
-                                            },
-                                            {
-                                                key: 'grid',
-                                                Icon: LayoutGrid,
-                                                label: 'Grid',
-                                            },
-                                        ] as const
-                                    ).map(({ key, Icon, label }) => (
-                                        <button
-                                            key={key}
-                                            onClick={() => setViewMode(key)}
-                                            className={cn(
-                                                'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all',
-                                                viewMode === key
-                                                    ? 'bg-slate-700 text-white shadow-sm'
-                                                    : 'text-slate-400 hover:text-slate-200',
-                                            )}
-                                        >
-                                            <Icon className="h-3.5 w-3.5" />
-                                            {label}
-                                        </button>
-                                    ))}
-                                </div>
-
-                                <Button
-                                    isIconOnly
-                                    size="sm"
-                                    className="bg-transparent border border-slate-700 text-slate-300 hover:text-white"
-                                    onPress={() => void onLogout()}
-                                    aria-label="Logout"
-                                >
-                                    <LogOut className="h-4 w-4" />
-                                </Button>
-
+                                {/* Split toggle */}
                                 {selectedResource && (
-                                    <Button
-                                        isIconOnly
-                                        size="sm"
-                                        className="bg-transparent border border-slate-700 text-slate-300 hover:text-white"
-                                        aria-label={
+                                    <button
+                                        title={
                                             panelMode === 'explorer-only'
                                                 ? 'Split View'
                                                 : 'Explorer fullscreen'
                                         }
-                                        onPress={() => {
+                                        onClick={() => {
                                             stopResize();
                                             setPanelMode((prev) =>
                                                 prev === 'explorer-only'
@@ -840,17 +833,19 @@ function Home() {
                                                     : 'explorer-only',
                                             );
                                         }}
+                                        className="w-7 h-7 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-all"
                                     >
                                         {panelMode === 'explorer-only' ? (
                                             <ArrowLeftFromLine className="h-4 w-4" />
                                         ) : (
                                             <ArrowRightFromLine className="h-4 w-4" />
                                         )}
-                                    </Button>
+                                    </button>
                                 )}
                             </div>
                         </div>
 
+                        {/* Explorer content */}
                         <div className="flex-1 min-h-0">
                             {viewMode === 'list' ? (
                                 <div className="h-full overflow-auto">
@@ -954,17 +949,19 @@ function Home() {
                         </div>
                     </section>
 
+                    {/* Resize handle */}
                     {isSplitMode && (
                         <button
                             type="button"
                             aria-label="Panels resized handle"
                             onPointerDown={onResizeStart}
-                            className="w-2 shrink-0 bg-slate-900 hover:bg-slate-800 border-r border-l border-slate-800 cursor-col-resize flex items-center justify-center"
+                            className="w-1.5 shrink-0 bg-slate-900 hover:bg-slate-700 border-r border-l border-slate-800 cursor-col-resize flex items-center justify-center transition-colors"
                         >
-                            <GripVertical className="h-4 w-4 text-slate-500" />
+                            <GripVertical className="h-4 w-4 text-slate-600" />
                         </button>
                     )}
 
+                    {/* ── PDF Viewer panel ────────────────────────────── */}
                     {hasViewerContent && viewerSrc && selectedResource && (
                         <section
                             style={{ width: `${viewerWidthPct}%` }}
@@ -975,46 +972,46 @@ function Home() {
                                 viewerWidthPct <= 0.01 && 'pointer-events-none',
                             )}
                         >
-                            <div className="h-11 border-b border-slate-800 px-3 flex items-center justify-between gap-2 text-sm">
-                                <span className="truncate">
+                            {/* PDF toolbar — ghost pill buttons */}
+                            <div className="h-11 border-b border-slate-800 px-3 flex items-center gap-2">
+                                <span className="flex-1 truncate text-sm text-slate-200">
                                     {selectedResource.name}
                                 </span>
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            void window.studySync?.openExternal?.(
-                                                viewerSrc,
-                                            );
-                                        }}
-                                        className="text-xs rounded-md border border-slate-700 px-2 py-1 hover:bg-slate-800"
-                                    >
-                                        Im Browser öffnen
-                                    </button>
-                                    <button
-                                        type="button"
-                                        title={
-                                            panelMode === 'viewer-only'
-                                                ? 'Split View'
-                                                : 'PDF fullscreen'
-                                        }
-                                        onClick={() => {
-                                            stopResize();
-                                            setPanelMode((prev) =>
-                                                prev === 'viewer-only'
-                                                    ? 'split'
-                                                    : 'viewer-only',
-                                            );
-                                        }}
-                                        className="rounded-md border border-slate-700 p-1.5 text-slate-300 hover:bg-slate-800 hover:text-white"
-                                    >
-                                        {panelMode === 'viewer-only' ? (
-                                            <ArrowRightFromLine className="h-4 w-4" />
-                                        ) : (
-                                            <ArrowLeftFromLine className="h-4 w-4" />
-                                        )}
-                                    </button>
-                                </div>
+                                <button
+                                    type="button"
+                                    title="Im Browser öffnen"
+                                    onClick={() => {
+                                        void window.studySync?.openExternal?.(
+                                            viewerSrc,
+                                        );
+                                    }}
+                                    className="h-7 px-3 rounded-full text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-all"
+                                >
+                                    Im Browser öffnen
+                                </button>
+                                <button
+                                    type="button"
+                                    title={
+                                        panelMode === 'viewer-only'
+                                            ? 'Split View'
+                                            : 'PDF fullscreen'
+                                    }
+                                    onClick={() => {
+                                        stopResize();
+                                        setPanelMode((prev) =>
+                                            prev === 'viewer-only'
+                                                ? 'split'
+                                                : 'viewer-only',
+                                        );
+                                    }}
+                                    className="w-7 h-7 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-all"
+                                >
+                                    {panelMode === 'viewer-only' ? (
+                                        <ArrowRightFromLine className="h-4 w-4" />
+                                    ) : (
+                                        <ArrowLeftFromLine className="h-4 w-4" />
+                                    )}
+                                </button>
                             </div>
                             <iframe
                                 key={viewerSrc}
