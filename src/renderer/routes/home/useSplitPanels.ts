@@ -24,6 +24,8 @@ export function useSplitPanels({
 
     const splitContainerRef = useRef<HTMLDivElement | null>(null);
     const isResizingRef = useRef(false);
+    const pointerIdRef = useRef<number | null>(null);
+    const resizeHandleRef = useRef<HTMLButtonElement | null>(null);
 
     const clampSplitRatio = useCallback((value: number) => {
         return Math.min(MAX_SPLIT_RATIO, Math.max(MIN_SPLIT_RATIO, value));
@@ -33,7 +35,22 @@ export function useSplitPanels({
         if (!isResizingRef.current) {
             return;
         }
+
+        const handle = resizeHandleRef.current;
+        const pointerId = pointerIdRef.current;
+        if (handle && pointerId !== null) {
+            try {
+                if (handle.hasPointerCapture(pointerId)) {
+                    handle.releasePointerCapture(pointerId);
+                }
+            } catch {
+                // noop
+            }
+        }
+
         isResizingRef.current = false;
+        pointerIdRef.current = null;
+        resizeHandleRef.current = null;
         setIsResizing(false);
         document.body.style.userSelect = '';
         document.body.style.cursor = '';
@@ -71,6 +88,15 @@ export function useSplitPanels({
                 return;
             }
             event.preventDefault();
+            pointerIdRef.current = event.pointerId;
+            resizeHandleRef.current = event.currentTarget;
+
+            try {
+                event.currentTarget.setPointerCapture(event.pointerId);
+            } catch {
+                // noop
+            }
+
             isResizingRef.current = true;
             setIsResizing(true);
             document.body.style.userSelect = 'none';
@@ -84,15 +110,19 @@ export function useSplitPanels({
             if (!isResizingRef.current) {
                 return;
             }
-            if ((event.buttons & 1) !== 1) {
-                stopResize();
-                return;
-            }
             applySplitFromPointer(event.clientX);
         };
 
-        const onPointerUp = () => stopResize();
-        const onPointerCancel = () => stopResize();
+        const onPointerUp = (event: PointerEvent) => {
+            if (pointerIdRef.current === null || event.pointerId === pointerIdRef.current) {
+                stopResize();
+            }
+        };
+        const onPointerCancel = (event: PointerEvent) => {
+            if (pointerIdRef.current === null || event.pointerId === pointerIdRef.current) {
+                stopResize();
+            }
+        };
         const onWindowBlur = () => stopResize();
 
         window.addEventListener('pointermove', onPointerMove);

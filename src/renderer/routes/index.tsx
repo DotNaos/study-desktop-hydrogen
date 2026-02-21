@@ -496,7 +496,11 @@ function Home() {
                                         }}
                                         className="rounded-md border border-slate-700 p-1.5 text-slate-300 hover:bg-slate-800 hover:text-white"
                                     >
-                                        <ArrowRightFromLine className="h-4 w-4" />
+                                        {panelMode === 'explorer-only' ? (
+                                            <ArrowLeftFromLine className="h-4 w-4" />
+                                        ) : (
+                                            <ArrowRightFromLine className="h-4 w-4" />
+                                        )}
                                     </button>
                                 )}
                             </div>
@@ -630,7 +634,11 @@ function Home() {
                                         }}
                                         className="rounded-md border border-slate-700 p-1.5 text-slate-300 hover:bg-slate-800 hover:text-white"
                                     >
-                                        <ArrowLeftFromLine className="h-4 w-4" />
+                                        {panelMode === 'viewer-only' ? (
+                                            <ArrowRightFromLine className="h-4 w-4" />
+                                        ) : (
+                                            <ArrowLeftFromLine className="h-4 w-4" />
+                                        )}
                                     </button>
                                 </div>
                             </div>
