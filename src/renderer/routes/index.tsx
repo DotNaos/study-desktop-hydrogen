@@ -1,91 +1,42 @@
 import { createFileRoute } from '@tanstack/react-router';
 import {
-    Check,
-    ChevronDown,
-    ChevronRight,
-    FileText,
-    Folder,
+    ArrowLeftFromLine,
+    ArrowRightFromLine,
+    GripVertical,
     LayoutGrid,
     List,
     Loader2,
-    Share2,
-    Upload,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { FormEvent, ReactNode } from 'react';
+import type { FormEvent } from 'react';
 import { TreemapCanvas } from '../app/components/TreemapCanvas';
-import {
-    ContextMenu,
-    ContextMenuContent,
-    ContextMenuItem,
-    ContextMenuSeparator,
-    ContextMenuTrigger,
-} from '../app/components/ui/context-menu';
 import {
     buildInitialCompletionMap,
     collectResourceIds,
     flattenNodes,
-    getNodeCompletionValue,
-    isFolderNode,
     isResourceNode,
     type ExplorerNode,
 } from '../app/treeUtils';
 import { transformCoursesToZoomData } from '../app/zoomData';
 import { cn } from '../shared/lib/utils';
-
-interface AuthStatusResponse {
-    authenticated: boolean;
-    error?: string | null;
-    selectedSchool?: string | null;
-    hasStoredCredentials?: boolean;
-}
-
-interface LoginResponse {
-    ok?: boolean;
-    authenticated?: boolean;
-    error?: string;
-}
-
-type ExportMode = 'saveAs' | 'share';
+import { readJson, resolveApiBase } from './home/api';
+import { ExportDialog } from './home/ExportDialog';
+import { ExplorerTree } from './home/ExplorerTree';
+import { LoginGate } from './home/LoginGate';
+import {
+    type AuthStatusResponse,
+    type ExportMode,
+    type LoginResponse,
+    type ViewMode,
+} from './home/types';
+import { useSplitPanels } from './home/useSplitPanels';
 
 export const Route = createFileRoute('/')({
     component: Home,
 });
 
-function getFallbackApiBase(): string {
-    const fromEnv = import.meta.env.VITE_API_BASE;
-    if (fromEnv && fromEnv.trim()) {
-        return fromEnv.replace(/\/$/, '');
-    }
-    if (window.location.protocol === 'file:') {
-        return 'http://127.0.0.1:3333/api';
-    }
-    return '/api';
-}
-
-async function resolveApiBase(): Promise<string> {
-    const fallback = getFallbackApiBase();
-    try {
-        const dynamicBase = await window.studySync?.getApiBase?.();
-        if (dynamicBase && dynamicBase.trim()) {
-            return dynamicBase.replace(/\/$/, '');
-        }
-    } catch {
-        // fallback to static value
-    }
-    return fallback;
-}
-
-async function readJson<T>(response: Response): Promise<T> {
-    const text = await response.text();
-    if (!text.trim()) {
-        return {} as T;
-    }
-    return JSON.parse(text) as T;
-}
-
 function Home() {
-    const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+    const [viewMode, setViewMode] = useState<ViewMode>('list');
     const [apiBase, setApiBase] = useState<string>('');
     const [authStatus, setAuthStatus] = useState<AuthStatusResponse | null>(null);
     const [authLoading, setAuthLoading] = useState(true);
@@ -158,18 +109,29 @@ function Home() {
         ? `${apiBase}/nodes/${encodeURIComponent(selectedResource.id)}/data`
         : null;
 
-    const findFirstResource = useCallback((nodes: ExplorerNode[]): ExplorerNode | null => {
-        for (const node of nodes) {
-            if (isResourceNode(node)) {
-                return node;
-            }
-            const childMatch = findFirstResource(node.children ?? []);
-            if (childMatch) {
-                return childMatch;
-            }
-        }
-        return null;
-    }, []);
+    const hasViewerContent = Boolean(viewerSrc && selectedResource);
+    const {
+        panelMode,
+        setPanelMode,
+        splitContainerRef,
+        isSplitMode,
+        explorerWidthPct,
+        viewerWidthPct,
+        shouldAnimatePanels,
+        onResizeStart,
+        stopResize,
+    } = useSplitPanels({
+        hasViewerContent,
+        selectedResourceId,
+    });
+
+    const openResource = useCallback(
+        (resourceId: string) => {
+            setSelectedResourceId(resourceId);
+            setPanelMode((prev) => (prev === 'explorer-only' ? 'split' : prev));
+        },
+        [setPanelMode],
+    );
 
     const loadTree = useCallback(async () => {
         if (!apiBase) {
@@ -203,8 +165,10 @@ function Home() {
                 return new Set(tree.map((node) => node.id));
             });
 
-            const defaultResource = findFirstResource(tree);
-            setSelectedResourceId((prev) => prev ?? defaultResource?.id ?? null);
+            const nodeIds = new Set(flattenNodes(tree).map((node) => node.id));
+            setSelectedResourceId((prev) =>
+                prev && nodeIds.has(prev) ? prev : null,
+            );
         } catch (error) {
             setTreeError(
                 error instanceof Error
@@ -214,7 +178,7 @@ function Home() {
         } finally {
             setTreeLoading(false);
         }
-    }, [apiBase, findFirstResource]);
+    }, [apiBase]);
 
     const loadAuthStatus = useCallback(async () => {
         if (!apiBase) {
@@ -399,10 +363,7 @@ function Home() {
                     }
                     throw new Error(result.error || 'EXPORT_SAVE_AS_FAILED');
                 }
-
-                setNotice(
-                    `Export gespeichert: ${result.fileCount ?? 0} Datei(en)`,
-                );
+                setNotice(`Export gespeichert: ${result.fileCount ?? 0} Datei(en)`);
             } else {
                 const result = await window.studySync?.exportShare?.(exportNode.id);
                 if (!result) {
@@ -411,17 +372,13 @@ function Home() {
                 if (!result.ok) {
                     throw new Error(result.error || 'EXPORT_SHARE_FAILED');
                 }
-                setNotice(
-                    `Share-ZIP erstellt: ${result.fileCount ?? 0} Datei(en)`,
-                );
+                setNotice(`Share-ZIP erstellt: ${result.fileCount ?? 0} Datei(en)`);
             }
 
             setExportNode(null);
         } catch (error) {
             setExportError(
-                error instanceof Error
-                    ? error.message
-                    : 'Export fehlgeschlagen.',
+                error instanceof Error ? error.message : 'Export fehlgeschlagen.',
             );
         } finally {
             setExportMode(null);
@@ -441,191 +398,23 @@ function Home() {
 
     if (!authStatus?.authenticated) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4">
-                <form
-                    className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900/80 p-6 space-y-4"
-                    onSubmit={onLogin}
-                >
-                    <div>
-                        <h1 className="text-xl font-semibold text-slate-100">
-                            Moodle Login
-                        </h1>
-                        <p className="mt-1 text-sm text-slate-400">
-                            Ohne validen Login ist die App gesperrt.
-                        </p>
-                    </div>
-
-                    <label className="block text-sm text-slate-300">
-                        Username
-                        <input
-                            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-sky-500"
-                            autoComplete="username"
-                            value={loginUsername}
-                            onChange={(event) => setLoginUsername(event.target.value)}
-                            placeholder="moodle username"
-                        />
-                    </label>
-
-                    <label className="block text-sm text-slate-300">
-                        Passwort
-                        <input
-                            type="password"
-                            autoComplete="current-password"
-                            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-sky-500"
-                            value={loginPassword}
-                            onChange={(event) => setLoginPassword(event.target.value)}
-                            placeholder="moodle password"
-                        />
-                    </label>
-
-                    {(authError || authStatus?.error) && (
-                        <p className="text-sm text-rose-400">
-                            {authError || authStatus.error}
-                        </p>
-                    )}
-
-                    <button
-                        type="submit"
-                        disabled={loginSubmitting}
-                        className="w-full rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                        {loginSubmitting ? 'Prüfe Credentials...' : 'Einloggen'}
-                    </button>
-                </form>
-            </div>
+            <LoginGate
+                authError={authError}
+                authStatusError={authStatus?.error ?? null}
+                loginUsername={loginUsername}
+                loginPassword={loginPassword}
+                loginSubmitting={loginSubmitting}
+                onUsernameChange={setLoginUsername}
+                onPasswordChange={setLoginPassword}
+                onSubmit={onLogin}
+            />
         );
     }
-
-    const renderNode = (node: ExplorerNode, depth: number): ReactNode => {
-        const folder = isFolderNode(node);
-        const completed = getNodeCompletionValue(node, completionMap);
-        const selected = selectedResourceId === node.id;
-        const expanded = expandedIds.has(node.id);
-        const hasChildren = (node.children?.length ?? 0) > 0;
-        const isBusy = completionBusyId === node.id;
-
-        const completionLabel = folder
-            ? completed
-                ? 'Alle Ressourcen als unerledigt markieren'
-                : 'Alle Ressourcen als erledigt markieren'
-            : completed
-              ? 'Als unerledigt markieren'
-              : 'Als erledigt markieren';
-
-        const completionTarget = !completed;
-
-        return (
-            <div key={node.id}>
-                <ContextMenu>
-                    <ContextMenuTrigger asChild>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                if (folder) {
-                                    toggleExpanded(node.id);
-                                } else {
-                                    setSelectedResourceId(node.id);
-                                }
-                            }}
-                            className={cn(
-                                'w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors',
-                                selected
-                                    ? 'bg-sky-900/40 text-sky-200'
-                                    : 'text-slate-200 hover:bg-slate-800/80',
-                            )}
-                            style={{ paddingLeft: `${depth * 14 + 8}px` }}
-                        >
-                            {folder ? (
-                                hasChildren ? (
-                                    expanded ? (
-                                        <ChevronDown className="h-4 w-4 text-slate-400" />
-                                    ) : (
-                                        <ChevronRight className="h-4 w-4 text-slate-400" />
-                                    )
-                                ) : (
-                                    <span className="w-4" />
-                                )
-                            ) : (
-                                <span className="w-4" />
-                            )}
-
-                            {folder ? (
-                                <Folder className="h-4 w-4 text-amber-300" />
-                            ) : (
-                                <FileText className="h-4 w-4 text-sky-300" />
-                            )}
-
-                            <span className="truncate flex-1">{node.name}</span>
-
-                            {isBusy ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" />
-                            ) : completed ? (
-                                <Check className="h-3.5 w-3.5 text-emerald-400" />
-                            ) : null}
-                        </button>
-                    </ContextMenuTrigger>
-                    <ContextMenuContent className="bg-slate-900 border-slate-700 text-slate-100">
-                        <ContextMenuItem
-                            onClick={() => {
-                                void persistCompletion(node, completionTarget);
-                            }}
-                            className="focus:bg-slate-800 focus:text-white"
-                        >
-                            <Check className="mr-2 h-4 w-4" />
-                            {completionLabel}
-                        </ContextMenuItem>
-                        <ContextMenuSeparator className="bg-slate-700" />
-                        <ContextMenuItem
-                            onClick={() => openExportDialog(node)}
-                            className="focus:bg-slate-800 focus:text-white"
-                        >
-                            <Upload className="mr-2 h-4 w-4" />
-                            Exportieren...
-                        </ContextMenuItem>
-                    </ContextMenuContent>
-                </ContextMenu>
-
-                {folder && expanded && hasChildren && (
-                    <div>{node.children?.map((child) => renderNode(child, depth + 1))}</div>
-                )}
-            </div>
-        );
-    };
 
     return (
         <div className="h-screen flex flex-col bg-slate-950 text-slate-100">
             <header className="h-12 border-b border-slate-800 flex items-center justify-between px-4">
-                <div className="text-sm font-medium tracking-wide">
-                    Study Desktop
-                </div>
-                <div className="flex items-center rounded-lg border border-slate-700 overflow-hidden">
-                    <button
-                        type="button"
-                        onClick={() => setViewMode('list')}
-                        className={cn(
-                            'px-3 py-1.5 text-xs flex items-center gap-1.5 transition-colors',
-                            viewMode === 'list'
-                                ? 'bg-slate-200 text-slate-900'
-                                : 'bg-slate-900 text-slate-300 hover:bg-slate-800',
-                        )}
-                    >
-                        <List className="h-3.5 w-3.5" />
-                        Liste
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setViewMode('grid')}
-                        className={cn(
-                            'px-3 py-1.5 text-xs flex items-center gap-1.5 transition-colors border-l border-slate-700',
-                            viewMode === 'grid'
-                                ? 'bg-slate-200 text-slate-900'
-                                : 'bg-slate-900 text-slate-300 hover:bg-slate-800',
-                        )}
-                    >
-                        <LayoutGrid className="h-3.5 w-3.5" />
-                        Grid
-                    </button>
-                </div>
+                <div className="text-sm font-medium tracking-wide">Study Desktop</div>
                 <div className="text-xs text-slate-400">
                     {authStatus.selectedSchool || 'moodle'}
                 </div>
@@ -644,79 +433,206 @@ function Home() {
                 </div>
             )}
 
-            <main className="flex-1 min-h-0 flex flex-col md:flex-row">
-                {viewMode === 'list' ? (
-                    <aside className="w-full md:w-[380px] border-b md:border-b-0 md:border-r border-slate-800 overflow-auto">
-                        <div className="px-3 py-2 text-xs uppercase tracking-wider text-slate-500">
-                            Semester / Kurse / Wochen / Ressourcen
+            <main className="flex-1 min-h-0">
+                <div ref={splitContainerRef} className="h-full w-full flex min-w-0">
+                    <section
+                        style={{ width: `${explorerWidthPct}%` }}
+                        className={cn(
+                            'h-full min-w-0 flex flex-col overflow-hidden',
+                            shouldAnimatePanels && 'transition-[width] duration-220 ease-out',
+                            hasViewerContent &&
+                                explorerWidthPct > 0 &&
+                                'border-r border-slate-800',
+                            explorerWidthPct <= 0.01 && 'pointer-events-none',
+                        )}
+                    >
+                        <div className="h-11 border-b border-slate-800 px-3 flex items-center justify-between gap-3">
+                            <div className="text-sm font-medium">Explorer</div>
+                            <div className="flex items-center gap-2">
+                                <div className="flex items-center rounded-lg border border-slate-700 overflow-hidden">
+                                    <button
+                                        type="button"
+                                        onClick={() => setViewMode('list')}
+                                        className={cn(
+                                            'px-3 py-1.5 text-xs flex items-center gap-1.5 transition-colors',
+                                            viewMode === 'list'
+                                                ? 'bg-slate-200 text-slate-900'
+                                                : 'bg-slate-900 text-slate-300 hover:bg-slate-800',
+                                        )}
+                                    >
+                                        <List className="h-3.5 w-3.5" />
+                                        Liste
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setViewMode('grid')}
+                                        className={cn(
+                                            'px-3 py-1.5 text-xs flex items-center gap-1.5 transition-colors border-l border-slate-700',
+                                            viewMode === 'grid'
+                                                ? 'bg-slate-200 text-slate-900'
+                                                : 'bg-slate-900 text-slate-300 hover:bg-slate-800',
+                                        )}
+                                    >
+                                        <LayoutGrid className="h-3.5 w-3.5" />
+                                        Grid
+                                    </button>
+                                </div>
+
+                                {selectedResource && (
+                                    <button
+                                        type="button"
+                                        title={
+                                            panelMode === 'explorer-only'
+                                                ? 'Split View'
+                                                : 'Explorer fullscreen'
+                                        }
+                                        onClick={() => {
+                                            stopResize();
+                                            setPanelMode((prev) =>
+                                                prev === 'explorer-only'
+                                                    ? 'split'
+                                                    : 'explorer-only',
+                                            );
+                                        }}
+                                        className="rounded-md border border-slate-700 p-1.5 text-slate-300 hover:bg-slate-800 hover:text-white"
+                                    >
+                                        <ArrowRightFromLine className="h-4 w-4" />
+                                    </button>
+                                )}
+                            </div>
                         </div>
 
-                        {treeLoading ? (
-                            <div className="px-3 py-4 text-sm text-slate-400 flex items-center gap-2">
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                Lade Inhalte...
-                            </div>
-                        ) : roots.length === 0 ? (
-                            <div className="px-3 py-4 text-sm text-slate-400">
-                                Keine Inhalte gefunden.
-                            </div>
-                        ) : (
-                            <div className="px-2 pb-3">
-                                {roots.map((node) => renderNode(node, 0))}
-                            </div>
-                        )}
-                    </aside>
-                ) : (
-                    <section className="w-full md:w-[58%] border-b md:border-b-0 md:border-r border-slate-800 min-h-[360px]">
-                        {treeLoading ? (
-                            <div className="h-full flex items-center justify-center text-sm text-slate-400">
-                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                Lade Inhalte...
-                            </div>
-                        ) : roots.length === 0 ? (
-                            <div className="h-full flex items-center justify-center text-sm text-slate-400">
-                                Keine Inhalte gefunden.
-                            </div>
-                        ) : (
-                            <TreemapCanvas
-                                data={treemapData}
-                                onLeafOpen={(node) => {
-                                    const explorerNode = nodeMap.get(node.id);
-                                    if (explorerNode && isResourceNode(explorerNode)) {
-                                        setSelectedResourceId(explorerNode.id);
-                                    }
-                                }}
-                                onToggleCompletion={(node, completed) => {
-                                    const explorerNode = nodeMap.get(node.id);
-                                    if (explorerNode) {
-                                        void persistCompletion(explorerNode, completed);
-                                    }
-                                }}
-                                onExport={(node) => {
-                                    const explorerNode = nodeMap.get(node.id);
-                                    if (explorerNode) {
-                                        openExportDialog(explorerNode);
-                                    }
-                                }}
-                            />
-                        )}
-                    </section>
-                )}
+                        <div className="flex-1 min-h-0">
+                            {viewMode === 'list' ? (
+                                <div className="h-full overflow-auto">
+                                    <div className="px-3 py-2 text-xs uppercase tracking-wider text-slate-500">
+                                        Semester / Kurse / Wochen / Ressourcen
+                                    </div>
 
-                <section className="flex-1 min-h-0">
-                    {viewerSrc && selectedResource ? (
-                        <div className="h-full flex flex-col">
-                            <div className="h-11 border-b border-slate-800 px-3 flex items-center justify-between text-sm">
+                                    {treeLoading ? (
+                                        <div className="px-3 py-4 text-sm text-slate-400 flex items-center gap-2">
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            Lade Inhalte...
+                                        </div>
+                                    ) : roots.length === 0 ? (
+                                        <div className="px-3 py-4 text-sm text-slate-400">
+                                            Keine Inhalte gefunden.
+                                        </div>
+                                    ) : (
+                                        <div className="px-2 pb-3">
+                                            <ExplorerTree
+                                                roots={roots}
+                                                completionMap={completionMap}
+                                                expandedIds={expandedIds}
+                                                selectedResourceId={selectedResourceId}
+                                                completionBusyId={completionBusyId}
+                                                onToggleExpanded={toggleExpanded}
+                                                onOpenResource={openResource}
+                                                onPersistCompletion={(node, completed) => {
+                                                    void persistCompletion(node, completed);
+                                                }}
+                                                onOpenExportDialog={openExportDialog}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="h-full min-h-[320px]">
+                                    {treeLoading ? (
+                                        <div className="h-full flex items-center justify-center text-sm text-slate-400">
+                                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                            Lade Inhalte...
+                                        </div>
+                                    ) : roots.length === 0 ? (
+                                        <div className="h-full flex items-center justify-center text-sm text-slate-400">
+                                            Keine Inhalte gefunden.
+                                        </div>
+                                    ) : (
+                                        <TreemapCanvas
+                                            data={treemapData}
+                                            onLeafOpen={(node) => {
+                                                const explorerNode = nodeMap.get(node.id);
+                                                if (
+                                                    explorerNode &&
+                                                    isResourceNode(explorerNode)
+                                                ) {
+                                                    openResource(explorerNode.id);
+                                                }
+                                            }}
+                                            onToggleCompletion={(node, completed) => {
+                                                const explorerNode = nodeMap.get(node.id);
+                                                if (explorerNode) {
+                                                    void persistCompletion(
+                                                        explorerNode,
+                                                        completed,
+                                                    );
+                                                }
+                                            }}
+                                            onExport={(node) => {
+                                                const explorerNode = nodeMap.get(node.id);
+                                                if (explorerNode) {
+                                                    openExportDialog(explorerNode);
+                                                }
+                                            }}
+                                        />
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </section>
+
+                    {isSplitMode && (
+                        <button
+                            type="button"
+                            aria-label="Panels resized handle"
+                            onPointerDown={onResizeStart}
+                            className="w-2 shrink-0 bg-slate-900 hover:bg-slate-800 border-r border-l border-slate-800 cursor-col-resize flex items-center justify-center"
+                        >
+                            <GripVertical className="h-4 w-4 text-slate-500" />
+                        </button>
+                    )}
+
+                    {hasViewerContent && viewerSrc && selectedResource && (
+                        <section
+                            style={{ width: `${viewerWidthPct}%` }}
+                            className={cn(
+                                'h-full min-w-0 flex flex-col overflow-hidden',
+                                shouldAnimatePanels && 'transition-[width] duration-220 ease-out',
+                                viewerWidthPct <= 0.01 && 'pointer-events-none',
+                            )}
+                        >
+                            <div className="h-11 border-b border-slate-800 px-3 flex items-center justify-between gap-2 text-sm">
                                 <span className="truncate">{selectedResource.name}</span>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        void window.studySync?.openExternal?.(viewerSrc);
-                                    }}
-                                    className="text-xs rounded-md border border-slate-700 px-2 py-1 hover:bg-slate-800"
-                                >
-                                    Im Browser öffnen
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            void window.studySync?.openExternal?.(viewerSrc);
+                                        }}
+                                        className="text-xs rounded-md border border-slate-700 px-2 py-1 hover:bg-slate-800"
+                                    >
+                                        Im Browser öffnen
+                                    </button>
+                                    <button
+                                        type="button"
+                                        title={
+                                            panelMode === 'viewer-only'
+                                                ? 'Split View'
+                                                : 'PDF fullscreen'
+                                        }
+                                        onClick={() => {
+                                            stopResize();
+                                            setPanelMode((prev) =>
+                                                prev === 'viewer-only'
+                                                    ? 'split'
+                                                    : 'viewer-only',
+                                            );
+                                        }}
+                                        className="rounded-md border border-slate-700 p-1.5 text-slate-300 hover:bg-slate-800 hover:text-white"
+                                    >
+                                        <ArrowLeftFromLine className="h-4 w-4" />
+                                    </button>
+                                </div>
                             </div>
                             <iframe
                                 key={viewerSrc}
@@ -724,68 +640,20 @@ function Home() {
                                 title={selectedResource.name}
                                 className="h-full w-full bg-white"
                             />
-                        </div>
-                    ) : (
-                        <div className="h-full flex items-center justify-center text-slate-400 text-sm">
-                            Wähle eine Ressource aus, um die PDF anzuzeigen.
-                        </div>
+                        </section>
                     )}
-                </section>
+                </div>
             </main>
 
             {exportNode && (
-                <div className="fixed inset-0 z-50 bg-black/65 flex items-center justify-center px-4">
-                    <div className="w-full max-w-lg rounded-xl border border-slate-700 bg-slate-900 p-5">
-                        <h2 className="text-lg font-semibold">Exportieren</h2>
-                        <p className="mt-1 text-sm text-slate-400">
-                            {exportNode.name}
-                        </p>
-
-                        {exportError && (
-                            <p className="mt-3 text-sm text-rose-400">{exportError}</p>
-                        )}
-
-                        <div className="mt-4 space-y-2">
-                            <button
-                                type="button"
-                                disabled={exportMode !== null}
-                                onClick={() => void runExport('saveAs')}
-                                className="w-full rounded-lg border border-slate-700 px-3 py-2 text-sm text-left hover:bg-slate-800 disabled:opacity-60"
-                            >
-                                <div className="font-medium">Save As</div>
-                                <div className="text-xs text-slate-400">
-                                    Ungezippt in ausgewählten Zielordner exportieren
-                                </div>
-                            </button>
-
-                            <button
-                                type="button"
-                                disabled={exportMode !== null}
-                                onClick={() => void runExport('share')}
-                                className="w-full rounded-lg border border-slate-700 px-3 py-2 text-sm text-left hover:bg-slate-800 disabled:opacity-60"
-                            >
-                                <div className="font-medium flex items-center gap-2">
-                                    <Share2 className="h-4 w-4" />
-                                    Share
-                                </div>
-                                <div className="text-xs text-slate-400">
-                                    ZIP erstellen und macOS Share-Dialog öffnen
-                                </div>
-                            </button>
-                        </div>
-
-                        <div className="mt-4 flex justify-end">
-                            <button
-                                type="button"
-                                disabled={exportMode !== null}
-                                onClick={() => setExportNode(null)}
-                                className="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:bg-slate-800 disabled:opacity-60"
-                            >
-                                Schließen
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <ExportDialog
+                    nodeName={exportNode.name}
+                    exportMode={exportMode}
+                    exportError={exportError}
+                    onSaveAs={() => void runExport('saveAs')}
+                    onShare={() => void runExport('share')}
+                    onClose={() => setExportNode(null)}
+                />
             )}
         </div>
     );
