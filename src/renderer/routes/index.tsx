@@ -652,8 +652,8 @@ function Home() {
         icon: typeof ArrowUpDown;
     }> = [
         { value: 'none', label: 'Neutral', icon: ArrowUpDown },
-        { value: 'completed-last', label: 'Done ↓', icon: ArrowDown },
-        { value: 'completed-first', label: 'Done ↑', icon: ArrowUp },
+        { value: 'completed-last', label: 'Done last', icon: ArrowDown },
+        { value: 'completed-first', label: 'Done first', icon: ArrowUp },
     ];
 
     if (authLoading || !apiBase) {
