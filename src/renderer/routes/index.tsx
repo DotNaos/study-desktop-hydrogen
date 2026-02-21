@@ -6,6 +6,7 @@ import {
     ArrowRightFromLine,
     ArrowUp,
     ArrowUpDown,
+    ExternalLink,
     GripVertical,
     LayoutGrid,
     List,
@@ -977,9 +978,6 @@ function Home() {
                         >
                             {/* PDF toolbar — ghost pill buttons */}
                             <div className="h-11 border-b border-slate-800 px-3 flex items-center gap-2">
-                                <span className="flex-1 truncate text-sm text-slate-200">
-                                    {selectedResource.name}
-                                </span>
                                 <button
                                     type="button"
                                     title="Im Browser öffnen"
@@ -988,10 +986,13 @@ function Home() {
                                             viewerSrc,
                                         );
                                     }}
-                                    className="h-7 px-3 rounded-full text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-all"
+                                    className="w-7 h-7 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-all shrink-0"
                                 >
-                                    Im Browser öffnen
+                                    <ExternalLink className="h-4 w-4" />
                                 </button>
+                                <span className="flex-1 truncate text-sm text-slate-200">
+                                    {selectedResource.name}
+                                </span>
                                 <button
                                     type="button"
                                     title={
