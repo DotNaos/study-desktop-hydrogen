@@ -1,6 +1,0 @@
-node_modules
-.react-router
-build
-dist
-.DS_Store
-.env*
