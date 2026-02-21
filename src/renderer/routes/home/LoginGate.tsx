@@ -1,3 +1,4 @@
+import { Button } from '@heroui/react';
 import type { FormEvent } from 'react';
 
 interface LoginGateProps {
@@ -6,8 +7,10 @@ interface LoginGateProps {
     loginUsername: string;
     loginPassword: string;
     loginSubmitting: boolean;
+    rememberMe: boolean;
     onUsernameChange: (value: string) => void;
     onPasswordChange: (value: string) => void;
+    onRememberMeChange: (value: boolean) => void;
     onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }
 
@@ -30,8 +33,10 @@ export function LoginGate({
     loginUsername,
     loginPassword,
     loginSubmitting,
+    rememberMe,
     onUsernameChange,
     onPasswordChange,
+    onRememberMeChange,
     onSubmit,
 }: LoginGateProps) {
     const mappedAuthError = authError ? mapAuthMessage(authError) : null;
@@ -49,51 +54,85 @@ export function LoginGate({
             : null);
 
     return (
-        <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-[#02081d] px-4">
-            <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute -top-28 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-cyan-500/10 blur-3xl" />
-                <div className="absolute -bottom-24 right-8 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
-            </div>
-
+        <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-slate-950 px-4">
             <form
-                className="relative z-10 w-full max-w-md rounded-2xl border border-slate-700/60 bg-[#071636]/90 p-6 shadow-[0_20px_80px_rgba(0,0,0,0.45)] backdrop-blur space-y-4"
+                className="relative z-10 w-full max-w-sm rounded-[1rem] bg-[#111116] border border-[#22222a] p-8 shadow-2xl space-y-7"
                 onSubmit={onSubmit}
             >
-                <div>
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-cyan-300/70">
+                <div className="space-y-1.5">
+                    <h1 className="text-2xl font-semibold text-slate-100">
                         Study Desktop
-                    </p>
-                    <h1 className="mt-1 text-2xl font-semibold text-slate-100">Moodle Login</h1>
-                    <p className="mt-1 text-sm text-slate-400">
-                        Ohne validen Login ist die App gesperrt.
-                    </p>
+                    </h1>
                     {infoMessage && (
-                        <p className="mt-2 text-xs text-slate-300/90">{infoMessage}</p>
+                        <p className="text-[13px] text-slate-400 mt-2">
+                            {infoMessage}
+                        </p>
                     )}
                 </div>
 
-                <label className="block text-sm text-slate-300">
-                    Username
-                    <input
-                        className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-sky-500"
-                        autoComplete="username"
-                        value={loginUsername}
-                        onChange={(event) => onUsernameChange(event.target.value)}
-                        placeholder="moodle username"
-                    />
-                </label>
+                <div className="space-y-5">
+                    <div>
+                        <span className="block text-sm text-slate-400 font-medium mb-1.5">
+                            Username
+                        </span>
+                        <input
+                            type="text"
+                            autoComplete="username"
+                            className="w-full h-11 px-3 mt-1.5 bg-[#18181f] border border-[#2a2a35] hover:bg-[#1d1d26] hover:border-[#353545] focus:bg-[#18181f] focus:border-cyan-500 focus:outline-none rounded-lg text-slate-100 placeholder:text-slate-600 transition-colors shadow-none"
+                            value={loginUsername}
+                            onChange={(e) => onUsernameChange(e.target.value)}
+                            placeholder="Benutzername"
+                            autoFocus
+                        />
+                    </div>
 
-                <label className="block text-sm text-slate-300">
-                    Passwort
-                    <input
-                        type="password"
-                        autoComplete="current-password"
-                        className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-sky-500"
-                        value={loginPassword}
-                        onChange={(event) => onPasswordChange(event.target.value)}
-                        placeholder="moodle password"
-                    />
-                </label>
+                    <div>
+                        <span className="block text-sm text-slate-400 font-medium mb-1.5">
+                            Passwort
+                        </span>
+                        <input
+                            type="password"
+                            autoComplete="current-password"
+                            className="w-full h-11 px-3 mt-1.5 bg-[#18181f] border border-[#2a2a35] hover:bg-[#1d1d26] hover:border-[#353545] focus:bg-[#18181f] focus:border-cyan-500 focus:outline-none rounded-lg text-slate-100 placeholder:text-slate-600 transition-colors shadow-none"
+                            value={loginPassword}
+                            onChange={(e) => onPasswordChange(e.target.value)}
+                            placeholder="Dein Passwort"
+                        />
+                    </div>
+
+                    <label className="flex items-center gap-2.5 cursor-pointer mt-2 group">
+                        <div className="relative flex items-center justify-center w-[18px] h-[18px] rounded border-2 border-slate-600 bg-[#111116] group-hover:border-slate-500 transition-colors overflow-hidden">
+                            <input
+                                type="checkbox"
+                                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10 m-0"
+                                checked={rememberMe}
+                                onChange={(e) =>
+                                    onRememberMeChange?.(e.target.checked)
+                                }
+                            />
+                            {rememberMe && (
+                                <div className="absolute inset-0 bg-cyan-500 border-cyan-500 flex items-center justify-center pointer-events-none">
+                                    <svg
+                                        className="w-3 h-3 text-white"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                        strokeWidth={3.5}
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            d="M5 13l4 4L19 7"
+                                        />
+                                    </svg>
+                                </div>
+                            )}
+                        </div>
+                        <span className="text-slate-300 text-[13.5px] select-none">
+                            Eingeloggt bleiben
+                        </span>
+                    </label>
+                </div>
 
                 {errorMessage && (
                     <p className="rounded-md border border-rose-500/30 bg-rose-900/20 px-3 py-2 text-sm text-rose-300">
@@ -101,13 +140,13 @@ export function LoginGate({
                     </p>
                 )}
 
-                <button
+                <Button
                     type="submit"
-                    disabled={loginSubmitting}
-                    className="w-full rounded-lg bg-cyan-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-cyan-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                    isDisabled={loginSubmitting}
+                    className="w-full font-medium bg-white text-black hover:bg-slate-200"
                 >
-                    {loginSubmitting ? 'Prüfe Credentials...' : 'Einloggen'}
-                </button>
+                    Einloggen
+                </Button>
             </form>
         </div>
     );

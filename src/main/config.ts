@@ -4,7 +4,18 @@ import { getDefaultSchool, getSchool, SchoolConfig } from './schools';
 
 const logger = createLogger('com.aryazos.study-sync.config');
 
-const DEFAULT_PORT = 3333;
+const DEV_DEFAULT_PORT = 3333;
+const PROD_DEFAULT_PORT = 3334;
+
+function isDevRuntime(): boolean {
+    if (process.env['ELECTRON_RENDERER_URL']) return true;
+    if (process.defaultApp) return true;
+    const nodeEnv = process.env['NODE_ENV'];
+    if (nodeEnv) return nodeEnv !== 'production';
+    return false;
+}
+
+const DEFAULT_PORT = isDevRuntime() ? DEV_DEFAULT_PORT : PROD_DEFAULT_PORT;
 
 function parsePort(value: string | undefined): number | undefined {
     if (!value) return undefined;

@@ -17,6 +17,7 @@ nodeGypRebuild: false
 buildDependenciesFromSource: false
 npmRebuild: false
 mac:
+    icon: build/icon.icns
     entitlementsInherit: build/entitlements.mac.plist
     hardenedRuntime: true
     notarize: true

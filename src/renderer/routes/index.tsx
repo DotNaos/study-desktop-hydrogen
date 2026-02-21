@@ -1,3 +1,4 @@
+import { Button, Checkbox, Dropdown, Tabs } from '@heroui/react';
 import { createFileRoute } from '@tanstack/react-router';
 import {
     ArrowDown,
@@ -5,14 +6,15 @@ import {
     ArrowRightFromLine,
     ArrowUp,
     ArrowUpDown,
+    ChevronDown,
     GripVertical,
     LayoutGrid,
     List,
     Loader2,
     LogOut,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { TreemapCanvas } from '../app/components/TreemapCanvas';
 import {
     buildInitialCompletionMap,
@@ -26,8 +28,8 @@ import {
 import { transformCoursesToZoomData } from '../app/zoomData';
 import { cn } from '../shared/lib/utils';
 import { readJson, resolveApiBase } from './home/api';
-import { ExportDialog } from './home/ExportDialog';
 import { ExplorerTree } from './home/ExplorerTree';
+import { ExportDialog } from './home/ExportDialog';
 import { LoginGate } from './home/LoginGate';
 import { ToastStack, type ToastItem } from './home/ToastStack';
 import {
@@ -49,23 +51,30 @@ function Home() {
         'none' | 'completed-first' | 'completed-last'
     >('none');
     const [apiBase, setApiBase] = useState<string>('');
-    const [authStatus, setAuthStatus] = useState<AuthStatusResponse | null>(null);
+    const [authStatus, setAuthStatus] = useState<AuthStatusResponse | null>(
+        null,
+    );
     const [authLoading, setAuthLoading] = useState(true);
     const [authError, setAuthError] = useState<string | null>(null);
     const [loginUsername, setLoginUsername] = useState('');
     const [loginPassword, setLoginPassword] = useState('');
     const [loginSubmitting, setLoginSubmitting] = useState(false);
+    const [rememberMe, setRememberMe] = useState(false);
 
     const [roots, setRoots] = useState<ExplorerNode[]>([]);
     const [treeLoading, setTreeLoading] = useState(false);
     const [completionMap, setCompletionMap] = useState<Map<string, boolean>>(
         () => new Map(),
     );
-    const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
+    const [expandedIds, setExpandedIds] = useState<Set<string>>(
+        () => new Set(),
+    );
     const [selectedResourceId, setSelectedResourceId] = useState<string | null>(
         null,
     );
-    const [completionBusyId, setCompletionBusyId] = useState<string | null>(null);
+    const [completionBusyId, setCompletionBusyId] = useState<string | null>(
+        null,
+    );
 
     const [exportNode, setExportNode] = useState<ExplorerNode | null>(null);
     const [exportMode, setExportMode] = useState<ExportMode | null>(null);
@@ -149,7 +158,9 @@ function Home() {
         const sortNodes = (nodes: ExplorerNode[]): ExplorerNode[] => {
             const nodesWithSortedChildren = nodes.map((node) => ({
                 ...node,
-                children: node.children ? sortNodes(node.children) : node.children,
+                children: node.children
+                    ? sortNodes(node.children)
+                    : node.children,
             }));
 
             return [...nodesWithSortedChildren].sort((a, b) => {
@@ -301,12 +312,27 @@ function Home() {
 
     useEffect(() => {
         void resolveApiBase().then((value) => setApiBase(value));
+
+        try {
+            const stored = localStorage.getItem('study-desktop-remember-me');
+            if (stored) {
+                const dec = JSON.parse(atob(stored));
+                if (dec.username && dec.password) {
+                    setLoginUsername(dec.username);
+                    setLoginPassword(dec.password);
+                    setRememberMe(true);
+                }
+            }
+        } catch (err) {
+            console.error('Failed to restore saved credentials', err);
+        }
     }, []);
 
     useEffect(() => {
         const loadGoodnotesAvailability = async () => {
             try {
-                const available = await window.studySync?.isGoodnotesAvailable?.();
+                const available =
+                    await window.studySync?.isGoodnotesAvailable?.();
                 setGoodnotesAvailable(Boolean(available));
             } catch {
                 setGoodnotesAvailable(false);
@@ -344,7 +370,11 @@ function Home() {
             });
             const payload = await readJson<LoginResponse>(response);
 
-            if (!response.ok || !payload.ok || payload.authenticated === false) {
+            if (
+                !response.ok ||
+                !payload.ok ||
+                payload.authenticated === false
+            ) {
                 throw new Error(payload.error || 'LOGIN_FAILED');
             }
 
@@ -354,7 +384,26 @@ function Home() {
                 selectedSchool: prev?.selectedSchool ?? null,
                 hasStoredCredentials: true,
             }));
-            setLoginPassword('');
+
+            if (rememberMe) {
+                try {
+                    const enc = btoa(
+                        JSON.stringify({
+                            username: loginUsername.trim(),
+                            password: loginPassword,
+                        }),
+                    );
+                    localStorage.setItem('study-desktop-remember-me', enc);
+                } catch (err) {
+                    console.error('Failed to save credentials', err);
+                }
+            } else {
+                localStorage.removeItem('study-desktop-remember-me');
+            }
+
+            if (!rememberMe) {
+                setLoginPassword('');
+            }
             await loadTree();
         } catch (error) {
             setAuthError(
@@ -372,7 +421,9 @@ function Home() {
             const response = await fetch(`${apiBase}/auth/logout`, {
                 method: 'POST',
             });
-            const payload = await readJson<{ ok?: boolean; error?: string }>(response);
+            const payload = await readJson<{ ok?: boolean; error?: string }>(
+                response,
+            );
             if (!response.ok || !payload.ok) {
                 throw new Error(payload.error || 'LOGOUT_FAILED');
             }
@@ -385,6 +436,8 @@ function Home() {
             }));
             setAuthError(null);
             setLoginPassword('');
+            localStorage.removeItem('study-desktop-remember-me');
+            setRememberMe(false);
             setRoots([]);
             setCompletionMap(new Map());
             setExpandedIds(new Set());
@@ -392,7 +445,9 @@ function Home() {
             setExportNode(null);
         } catch (error) {
             pushToast(
-                error instanceof Error ? error.message : 'Logout fehlgeschlagen.',
+                error instanceof Error
+                    ? error.message
+                    : 'Logout fehlgeschlagen.',
                 'error',
             );
         }
@@ -429,17 +484,26 @@ function Home() {
                         },
                     );
                     if (!response.ok) {
-                        throw new Error(`Completion update failed (${response.status})`);
+                        throw new Error(
+                            `Completion update failed (${response.status})`,
+                        );
                     }
                 } else {
-                    const updates = Object.fromEntries(ids.map((id) => [id, completed]));
-                    const response = await fetch(`${apiBase}/nodes/completion/batch`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ updates }),
-                    });
+                    const updates = Object.fromEntries(
+                        ids.map((id) => [id, completed]),
+                    );
+                    const response = await fetch(
+                        `${apiBase}/nodes/completion/batch`,
+                        {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ updates }),
+                        },
+                    );
                     if (!response.ok) {
-                        throw new Error(`Batch completion failed (${response.status})`);
+                        throw new Error(
+                            `Batch completion failed (${response.status})`,
+                        );
                     }
                 }
 
@@ -487,7 +551,9 @@ function Home() {
 
             try {
                 if (mode === 'saveAs') {
-                    const result = await window.studySync?.exportSaveAs?.(exportNode.id);
+                    const result = await window.studySync?.exportSaveAs?.(
+                        exportNode.id,
+                    );
                     if (!result) {
                         throw new Error('EXPORT_BRIDGE_UNAVAILABLE');
                     }
@@ -496,14 +562,18 @@ function Home() {
                             setExportNode(null);
                             return;
                         }
-                        throw new Error(result.error || 'EXPORT_SAVE_AS_FAILED');
+                        throw new Error(
+                            result.error || 'EXPORT_SAVE_AS_FAILED',
+                        );
                     }
                     pushToast(
                         `Export gespeichert: ${result.fileCount ?? 0} Datei(en)`,
                         'success',
                     );
                 } else if (mode === 'share') {
-                    const result = await window.studySync?.exportShare?.(exportNode.id);
+                    const result = await window.studySync?.exportShare?.(
+                        exportNode.id,
+                    );
                     if (!result) {
                         throw new Error('EXPORT_BRIDGE_UNAVAILABLE');
                     }
@@ -515,7 +585,9 @@ function Home() {
                         'success',
                     );
                 } else if (mode === 'openWith') {
-                    const result = await window.studySync?.exportOpenWith?.(exportNode.id);
+                    const result = await window.studySync?.exportOpenWith?.(
+                        exportNode.id,
+                    );
                     if (!result) {
                         throw new Error('EXPORT_BRIDGE_UNAVAILABLE');
                     }
@@ -524,7 +596,9 @@ function Home() {
                             setExportNode(null);
                             return;
                         }
-                        throw new Error(result.error || 'EXPORT_OPEN_WITH_FAILED');
+                        throw new Error(
+                            result.error || 'EXPORT_OPEN_WITH_FAILED',
+                        );
                     }
                     pushToast(
                         `Export geöffnet: ${result.fileCount ?? 0} Datei(en)`,
@@ -533,14 +607,17 @@ function Home() {
                 } else if (isFolderNode(exportNode)) {
                     throw new Error('GOODNOTES_RESOURCE_ONLY');
                 } else {
-                    const result = await window.studySync?.exportOpenGoodnotes?.(
-                        exportNode.id,
-                    );
+                    const result =
+                        await window.studySync?.exportOpenGoodnotes?.(
+                            exportNode.id,
+                        );
                     if (!result) {
                         throw new Error('EXPORT_BRIDGE_UNAVAILABLE');
                     }
                     if (!result.ok) {
-                        throw new Error(result.error || 'EXPORT_GOODNOTES_FAILED');
+                        throw new Error(
+                            result.error || 'EXPORT_GOODNOTES_FAILED',
+                        );
                     }
                     pushToast(
                         `In Goodnotes geöffnet: ${result.fileCount ?? 0} Datei(en)`,
@@ -551,7 +628,9 @@ function Home() {
                 setExportNode(null);
             } catch (error) {
                 const rawMessage =
-                    error instanceof Error ? error.message : 'Export fehlgeschlagen.';
+                    error instanceof Error
+                        ? error.message
+                        : 'Export fehlgeschlagen.';
                 const message =
                     rawMessage === 'GOODNOTES_RESOURCE_ONLY'
                         ? 'Goodnotes ist nur für einzelne PDF-Ressourcen verfügbar.'
@@ -596,8 +675,10 @@ function Home() {
                 loginUsername={loginUsername}
                 loginPassword={loginPassword}
                 loginSubmitting={loginSubmitting}
+                rememberMe={rememberMe}
                 onUsernameChange={setLoginUsername}
                 onPasswordChange={setLoginPassword}
+                onRememberMeChange={setRememberMe}
                 onSubmit={onLogin}
             />
         );
@@ -606,12 +687,16 @@ function Home() {
     return (
         <div className="h-screen flex flex-col bg-slate-950 text-slate-100">
             <main className="flex-1 min-h-0">
-                <div ref={splitContainerRef} className="h-full w-full flex min-w-0">
+                <div
+                    ref={splitContainerRef}
+                    className="h-full w-full flex min-w-0"
+                >
                     <section
                         style={{ width: `${explorerWidthPct}%` }}
                         className={cn(
                             'h-full min-w-0 flex flex-col overflow-hidden',
-                            shouldAnimatePanels && 'transition-[width] duration-220 ease-out',
+                            shouldAnimatePanels &&
+                                'transition-[width] duration-220 ease-out',
                             hasViewerContent &&
                                 explorerWidthPct > 0 &&
                                 'border-r border-slate-800',
@@ -621,96 +706,133 @@ function Home() {
                         <div className="h-11 border-b border-slate-800 px-3 flex items-center justify-between gap-3">
                             <div className="text-sm font-medium">Explorer</div>
                             <div className="flex items-center gap-2">
-                                <label className="flex items-center gap-2 text-xs text-slate-300 mr-1">
-                                    <input
-                                        type="checkbox"
-                                        checked={hideCompleted}
-                                        onChange={(event) =>
-                                            setHideCompleted(event.target.checked)
-                                        }
-                                        className="h-3.5 w-3.5 rounded border-slate-600 bg-slate-900 text-sky-400 focus:ring-sky-400/40"
-                                    />
-                                    Hide completed
-                                </label>
-                                <label className="flex items-center gap-2 text-xs text-slate-300">
-                                    Sort
-                                </label>
-                                <div
-                                    className="flex items-center rounded-lg border border-slate-700 overflow-hidden"
-                                    role="group"
-                                    aria-label="Sortierung nach Completion"
+                                <Checkbox
+                                    size="sm"
+                                    color="default"
+                                    isSelected={hideCompleted}
+                                    onValueChange={setHideCompleted}
                                 >
-                                    {completionSortOptions.map((option, index) => {
-                                        const Icon = option.icon;
-                                        const active = completionSort === option.value;
-                                        return (
-                                            <button
-                                                key={option.value}
-                                                type="button"
-                                                onClick={() => setCompletionSort(option.value)}
-                                                className={cn(
-                                                    'px-2.5 h-7 text-[11px] flex items-center gap-1.5 transition-colors',
-                                                    index > 0 && 'border-l border-slate-700',
-                                                    active
-                                                        ? 'bg-slate-200 text-slate-900'
-                                                        : 'bg-slate-900 text-slate-300 hover:bg-slate-800',
-                                                )}
-                                                title={option.label}
-                                                aria-pressed={active}
-                                            >
-                                                <Icon className="h-3.5 w-3.5" />
-                                                {option.label}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                                <div className="flex items-center rounded-lg border border-slate-700 overflow-hidden">
-                                    <button
-                                        type="button"
-                                        onClick={() => setViewMode('list')}
-                                        className={cn(
-                                            'px-3 py-1.5 text-xs flex items-center gap-1.5 transition-colors',
-                                            viewMode === 'list'
-                                                ? 'bg-slate-200 text-slate-900'
-                                                : 'bg-slate-900 text-slate-300 hover:bg-slate-800',
-                                        )}
-                                    >
-                                        <List className="h-3.5 w-3.5" />
-                                        Liste
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setViewMode('grid')}
-                                        className={cn(
-                                            'px-3 py-1.5 text-xs flex items-center gap-1.5 transition-colors border-l border-slate-700',
-                                            viewMode === 'grid'
-                                                ? 'bg-slate-200 text-slate-900'
-                                                : 'bg-slate-900 text-slate-300 hover:bg-slate-800',
-                                        )}
-                                    >
-                                        <LayoutGrid className="h-3.5 w-3.5" />
-                                        Grid
-                                    </button>
-                                </div>
+                                    <span className="text-xs text-slate-300 select-none">
+                                        Hide completed
+                                    </span>
+                                </Checkbox>
 
-                                <button
-                                    type="button"
-                                    onClick={() => void onLogout()}
-                                    className="rounded-md border border-slate-700 p-1.5 text-slate-300 hover:bg-slate-800 hover:text-white"
-                                    title="Logout"
+                                <Dropdown>
+                                    <Dropdown.Trigger>
+                                        <Button
+                                            size="sm"
+                                            className="h-8 min-w-0 bg-transparent border border-slate-700 text-slate-300 hover:text-white flex items-center gap-1.5 text-xs"
+                                        >
+                                            {completionSortOptions.find(
+                                                (o) =>
+                                                    o.value === completionSort,
+                                            )?.icon &&
+                                                (() => {
+                                                    const Icon =
+                                                        completionSortOptions.find(
+                                                            (o) =>
+                                                                o.value ===
+                                                                completionSort,
+                                                        )!.icon;
+                                                    return (
+                                                        <Icon className="h-3.5 w-3.5" />
+                                                    );
+                                                })()}
+                                            {completionSortOptions.find(
+                                                (o) =>
+                                                    o.value === completionSort,
+                                            )?.label || 'Sort'}
+                                            <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+                                        </Button>
+                                    </Dropdown.Trigger>
+                                    <Dropdown.Popover>
+                                        <Dropdown.Menu
+                                            aria-label="Sortierung"
+                                            selectionMode="single"
+                                            selectedKeys={
+                                                new Set([completionSort])
+                                            }
+                                            onSelectionChange={(keys) => {
+                                                const key = Array.from(keys)[0];
+                                                if (key)
+                                                    setCompletionSort(
+                                                        key as any,
+                                                    );
+                                            }}
+                                        >
+                                            {completionSortOptions.map(
+                                                (option) => (
+                                                    <Dropdown.Item
+                                                        key={option.value}
+                                                        id={option.value}
+                                                    >
+                                                        <div className="flex items-center gap-2">
+                                                            <option.icon className="w-4 h-4 text-slate-400" />
+                                                            {option.label}
+                                                        </div>
+                                                    </Dropdown.Item>
+                                                ),
+                                            )}
+                                        </Dropdown.Menu>
+                                    </Dropdown.Popover>
+                                </Dropdown>
+
+                                <Tabs
+                                    variant="secondary"
+                                    selectedKey={viewMode}
+                                    onSelectionChange={(key) =>
+                                        setViewMode(key as ViewMode)
+                                    }
+                                >
+                                    <Tabs.List className="flex w-fit items-center outline-none h-8 p-1 gap-1">
+                                        <Tabs.Tab
+                                            id="list"
+                                            className={cn(
+                                                'flex items-center gap-1.5 outline-none px-2 py-1 rounded-md text-xs font-medium transition-colors',
+                                                viewMode === 'list'
+                                                    ? 'text-white bg-slate-800'
+                                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50',
+                                            )}
+                                        >
+                                            <List className="h-3.5 w-3.5" />
+                                            Liste
+                                        </Tabs.Tab>
+                                        <Tabs.Tab
+                                            id="grid"
+                                            className={cn(
+                                                'flex items-center gap-1.5 outline-none px-2 py-1 rounded-md text-xs font-medium transition-colors',
+                                                viewMode === 'grid'
+                                                    ? 'text-white bg-slate-800'
+                                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50',
+                                            )}
+                                        >
+                                            <LayoutGrid className="h-3.5 w-3.5" />
+                                            Grid
+                                        </Tabs.Tab>
+                                    </Tabs.List>
+                                </Tabs>
+
+                                <Button
+                                    isIconOnly
+                                    size="sm"
+                                    className="bg-transparent border border-slate-700 text-slate-300 hover:text-white"
+                                    onPress={() => void onLogout()}
+                                    aria-label="Logout"
                                 >
                                     <LogOut className="h-4 w-4" />
-                                </button>
+                                </Button>
 
                                 {selectedResource && (
-                                    <button
-                                        type="button"
-                                        title={
+                                    <Button
+                                        isIconOnly
+                                        size="sm"
+                                        className="bg-transparent border border-slate-700 text-slate-300 hover:text-white"
+                                        aria-label={
                                             panelMode === 'explorer-only'
                                                 ? 'Split View'
                                                 : 'Explorer fullscreen'
                                         }
-                                        onClick={() => {
+                                        onPress={() => {
                                             stopResize();
                                             setPanelMode((prev) =>
                                                 prev === 'explorer-only'
@@ -718,14 +840,13 @@ function Home() {
                                                     : 'explorer-only',
                                             );
                                         }}
-                                        className="rounded-md border border-slate-700 p-1.5 text-slate-300 hover:bg-slate-800 hover:text-white"
                                     >
                                         {panelMode === 'explorer-only' ? (
                                             <ArrowLeftFromLine className="h-4 w-4" />
                                         ) : (
                                             <ArrowRightFromLine className="h-4 w-4" />
                                         )}
-                                    </button>
+                                    </Button>
                                 )}
                             </div>
                         </div>
@@ -752,14 +873,28 @@ function Home() {
                                                 roots={sortedRoots}
                                                 completionMap={completionMap}
                                                 expandedIds={expandedIds}
-                                                selectedResourceId={selectedResourceId}
-                                                completionBusyId={completionBusyId}
-                                                onToggleExpanded={toggleExpanded}
+                                                selectedResourceId={
+                                                    selectedResourceId
+                                                }
+                                                completionBusyId={
+                                                    completionBusyId
+                                                }
+                                                onToggleExpanded={
+                                                    toggleExpanded
+                                                }
                                                 onOpenResource={openResource}
-                                                onPersistCompletion={(node, completed) => {
-                                                    void persistCompletion(node, completed);
+                                                onPersistCompletion={(
+                                                    node,
+                                                    completed,
+                                                ) => {
+                                                    void persistCompletion(
+                                                        node,
+                                                        completed,
+                                                    );
                                                 }}
-                                                onOpenExportDialog={openExportDialog}
+                                                onOpenExportDialog={
+                                                    openExportDialog
+                                                }
                                             />
                                         </div>
                                     )}
@@ -779,16 +914,23 @@ function Home() {
                                         <TreemapCanvas
                                             data={treemapData}
                                             onLeafOpen={(node) => {
-                                                const explorerNode = nodeMap.get(node.id);
+                                                const explorerNode =
+                                                    nodeMap.get(node.id);
                                                 if (
                                                     explorerNode &&
                                                     isResourceNode(explorerNode)
                                                 ) {
-                                                    openResource(explorerNode.id);
+                                                    openResource(
+                                                        explorerNode.id,
+                                                    );
                                                 }
                                             }}
-                                            onToggleCompletion={(node, completed) => {
-                                                const explorerNode = nodeMap.get(node.id);
+                                            onToggleCompletion={(
+                                                node,
+                                                completed,
+                                            ) => {
+                                                const explorerNode =
+                                                    nodeMap.get(node.id);
                                                 if (explorerNode) {
                                                     void persistCompletion(
                                                         explorerNode,
@@ -797,9 +939,12 @@ function Home() {
                                                 }
                                             }}
                                             onExport={(node) => {
-                                                const explorerNode = nodeMap.get(node.id);
+                                                const explorerNode =
+                                                    nodeMap.get(node.id);
                                                 if (explorerNode) {
-                                                    openExportDialog(explorerNode);
+                                                    openExportDialog(
+                                                        explorerNode,
+                                                    );
                                                 }
                                             }}
                                         />
@@ -825,17 +970,22 @@ function Home() {
                             style={{ width: `${viewerWidthPct}%` }}
                             className={cn(
                                 'h-full min-w-0 flex flex-col overflow-hidden',
-                                shouldAnimatePanels && 'transition-[width] duration-220 ease-out',
+                                shouldAnimatePanels &&
+                                    'transition-[width] duration-220 ease-out',
                                 viewerWidthPct <= 0.01 && 'pointer-events-none',
                             )}
                         >
                             <div className="h-11 border-b border-slate-800 px-3 flex items-center justify-between gap-2 text-sm">
-                                <span className="truncate">{selectedResource.name}</span>
+                                <span className="truncate">
+                                    {selectedResource.name}
+                                </span>
                                 <div className="flex items-center gap-2">
                                     <button
                                         type="button"
                                         onClick={() => {
-                                            void window.studySync?.openExternal?.(viewerSrc);
+                                            void window.studySync?.openExternal?.(
+                                                viewerSrc,
+                                            );
                                         }}
                                         className="text-xs rounded-md border border-slate-700 px-2 py-1 hover:bg-slate-800"
                                     >

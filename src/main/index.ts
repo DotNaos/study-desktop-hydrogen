@@ -31,6 +31,9 @@ const GOODNOTES_APP_CANDIDATES = [
 if (process.versions?.electron) {
     process.env.STUDY_SYNC_DISABLE_AUTH =
         process.env.STUDY_SYNC_DISABLE_AUTH ?? '1';
+
+    // Force Chromium to expose the React DOM to macOS accessibility (for Agent E2E testing)
+    app.commandLine.appendSwitch('force-renderer-accessibility');
 }
 
 let mainWindow: BrowserWindow | null = null;
@@ -84,7 +87,10 @@ function resolveGoodnotesAppPath(): string | null {
         return null;
     }
 
-    const appRoots = ['/Applications', path.join(app.getPath('home'), 'Applications')];
+    const appRoots = [
+        '/Applications',
+        path.join(app.getPath('home'), 'Applications'),
+    ];
     for (const root of appRoots) {
         for (const appName of GOODNOTES_APP_CANDIDATES) {
             const appPath = path.join(root, appName);
@@ -100,11 +106,16 @@ function resolveGoodnotesAppPath(): string | null {
 async function exportNodeToTemporaryPath(
     nodeId: string,
 ): Promise<{ fileCount: number; outputPath: string }> {
-    const tempRoot = await fs.mkdtemp(path.join(tmpdir(), 'study-desktop-open-'));
+    const tempRoot = await fs.mkdtemp(
+        path.join(tmpdir(), 'study-desktop-open-'),
+    );
     return exportNodeSaveAs(nodeId, tempRoot);
 }
 
-async function openPathWithApp(appPath: string, targetPath: string): Promise<void> {
+async function openPathWithApp(
+    appPath: string,
+    targetPath: string,
+): Promise<void> {
     if (process.platform !== 'darwin') {
         const openError = await shell.openPath(targetPath);
         if (openError) {
@@ -114,7 +125,9 @@ async function openPathWithApp(appPath: string, targetPath: string): Promise<voi
     }
 
     await new Promise<void>((resolve, reject) => {
-        const child = spawn('open', ['-a', appPath, targetPath], { stdio: 'ignore' });
+        const child = spawn('open', ['-a', appPath, targetPath], {
+            stdio: 'ignore',
+        });
         child.once('error', reject);
         child.once('exit', (code) => {
             if (code === 0) {
@@ -158,6 +171,7 @@ function createMainWindow(iconPath?: string): BrowserWindow {
 }
 
 app.whenReady().then(async () => {
+    app.accessibilitySupportEnabled = true;
     app.setName('Study Desktop');
     const runtimeIconPath = applyRuntimeAppIcon();
 

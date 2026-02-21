@@ -48,3 +48,7 @@ pnpm-debug.log*
 ._*
 .Spotlight-V100
 .Trashes
+
+**/.DS_Store
+# heroui-agents-md
+.heroui-docs/

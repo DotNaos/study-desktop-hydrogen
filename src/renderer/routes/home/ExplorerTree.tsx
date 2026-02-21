@@ -74,50 +74,56 @@ export function ExplorerTree({
                                 }
                             }}
                             className={cn(
-                                'w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors',
+                                'flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors mx-2 w-[calc(100%-16px)] outline-none focus-visible:ring-2 focus-visible:ring-white/50',
                                 selected
-                                    ? 'bg-sky-900/40 text-sky-200'
-                                    : 'text-slate-200 hover:bg-slate-800/80',
+                                    ? 'bg-white/10 text-white font-medium shadow-sm'
+                                    : 'text-slate-300 hover:bg-white/5 hover:text-slate-100',
                             )}
                             style={{ paddingLeft: `${depth * 14 + 8}px` }}
                         >
                             {folder ? (
                                 hasChildren ? (
                                     expanded ? (
-                                        <ChevronDown className="h-4 w-4 text-slate-400" />
+                                        <ChevronDown className="h-4 w-4 text-slate-500 shrink-0" />
                                     ) : (
-                                        <ChevronRight className="h-4 w-4 text-slate-400" />
+                                        <ChevronRight className="h-4 w-4 text-slate-500 shrink-0" />
                                     )
                                 ) : (
-                                    <span className="w-4" />
+                                    <span className="w-4 shrink-0" />
                                 )
                             ) : (
-                                <span className="w-4" />
+                                <span className="w-4 shrink-0" />
                             )}
 
                             {folder ? (
                                 <Folder
                                     className={cn(
-                                        'h-4 w-4',
-                                        completed ? 'text-emerald-400' : 'text-slate-400',
+                                        'h-4 w-4 shrink-0',
+                                        completed
+                                            ? 'text-success'
+                                            : 'text-slate-500',
                                     )}
                                 />
                             ) : (
                                 <FileText
                                     className={cn(
-                                        'h-4 w-4',
-                                        completed ? 'text-emerald-400' : 'text-slate-300',
+                                        'h-4 w-4 shrink-0',
+                                        completed
+                                            ? 'text-success'
+                                            : 'text-slate-500',
                                     )}
                                 />
                             )}
 
-                            <span className="truncate flex-1">{node.name}</span>
+                            <span className="truncate">{node.name}</span>
 
                             {isBusy ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" />
+                                <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-500 shrink-0" />
                             ) : completed ? (
-                                <Check className="h-3.5 w-3.5 text-emerald-400" />
+                                <Check className="h-3.5 w-3.5 text-success shrink-0" />
                             ) : null}
+
+                            <div className="flex-1" />
                         </button>
                     </ContextMenuTrigger>
                     <ContextMenuContent className="bg-slate-900 border-slate-700 text-slate-100">
@@ -149,7 +155,11 @@ export function ExplorerTree({
                 </ContextMenu>
 
                 {folder && expanded && hasChildren && (
-                    <div>{node.children?.map((child) => renderNode(child, depth + 1))}</div>
+                    <div>
+                        {node.children?.map((child) =>
+                            renderNode(child, depth + 1),
+                        )}
+                    </div>
                 )}
             </div>
         );
