@@ -1,4 +1,4 @@
-import { Button, Dropdown, Tabs } from '@heroui/react';
+import { Button, Dropdown } from '@heroui/react';
 import { createFileRoute } from '@tanstack/react-router';
 import {
     ArrowDown,
@@ -781,40 +781,36 @@ function Home() {
                                     </Dropdown.Popover>
                                 </Dropdown>
 
-                                <Tabs
-                                    variant="secondary"
-                                    selectedKey={viewMode}
-                                    onSelectionChange={(key) =>
-                                        setViewMode(key as ViewMode)
-                                    }
-                                >
-                                    <Tabs.List className="flex w-fit items-center outline-none h-8 p-1 gap-1">
-                                        <Tabs.Tab
-                                            id="list"
+                                <div className="flex items-center h-8 rounded-lg bg-slate-800/60 border border-slate-700/50 p-0.5 gap-0.5">
+                                    {(
+                                        [
+                                            {
+                                                key: 'list',
+                                                Icon: List,
+                                                label: 'Liste',
+                                            },
+                                            {
+                                                key: 'grid',
+                                                Icon: LayoutGrid,
+                                                label: 'Grid',
+                                            },
+                                        ] as const
+                                    ).map(({ key, Icon, label }) => (
+                                        <button
+                                            key={key}
+                                            onClick={() => setViewMode(key)}
                                             className={cn(
-                                                'flex items-center gap-1.5 outline-none px-2 py-1 rounded-md text-xs font-medium transition-colors',
-                                                viewMode === 'list'
-                                                    ? 'text-white bg-slate-800'
-                                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50',
+                                                'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all',
+                                                viewMode === key
+                                                    ? 'bg-slate-700 text-white shadow-sm'
+                                                    : 'text-slate-400 hover:text-slate-200',
                                             )}
                                         >
-                                            <List className="h-3.5 w-3.5" />
-                                            Liste
-                                        </Tabs.Tab>
-                                        <Tabs.Tab
-                                            id="grid"
-                                            className={cn(
-                                                'flex items-center gap-1.5 outline-none px-2 py-1 rounded-md text-xs font-medium transition-colors',
-                                                viewMode === 'grid'
-                                                    ? 'text-white bg-slate-800'
-                                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50',
-                                            )}
-                                        >
-                                            <LayoutGrid className="h-3.5 w-3.5" />
-                                            Grid
-                                        </Tabs.Tab>
-                                    </Tabs.List>
-                                </Tabs>
+                                            <Icon className="h-3.5 w-3.5" />
+                                            {label}
+                                        </button>
+                                    ))}
+                                </div>
 
                                 <Button
                                     isIconOnly
