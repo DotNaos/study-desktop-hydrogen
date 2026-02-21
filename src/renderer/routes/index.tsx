@@ -1,4 +1,4 @@
-import { Button, Dropdown } from '@heroui/react';
+import { Dropdown } from '@heroui/react';
 import { createFileRoute } from '@tanstack/react-router';
 import {
     ArrowDown,
@@ -6,7 +6,6 @@ import {
     ArrowRightFromLine,
     ArrowUp,
     ArrowUpDown,
-    ChevronDown,
     GripVertical,
     LayoutGrid,
     List,
@@ -687,34 +686,33 @@ function Home() {
 
     return (
         <div className="h-screen flex bg-slate-950 text-slate-100">
-            {/* ── Sidenav ─────────────────────────────────────────────── */}
-            <nav className="w-12 shrink-0 flex flex-col items-center py-3 border-r border-slate-800 bg-slate-950">
+            {/* ── Sidenav – vertical tabs ──────────────────────────────── */}
+            <nav className="w-16 shrink-0 flex flex-col border-r border-slate-800 bg-slate-950">
                 {/* spacer top */}
                 <div className="flex-1" />
 
-                {/* List / Grid toggle */}
-                <div className="flex flex-col gap-1">
-                    {(
-                        [
-                            { key: 'list', Icon: List, label: 'Liste' },
-                            { key: 'grid', Icon: LayoutGrid, label: 'Grid' },
-                        ] as const
-                    ).map(({ key, Icon, label }) => (
-                        <button
-                            key={key}
-                            onClick={() => setViewMode(key)}
-                            title={label}
-                            className={cn(
-                                'w-8 h-8 flex items-center justify-center rounded-full transition-all',
-                                viewMode === key
-                                    ? 'bg-slate-700 text-white'
-                                    : 'text-slate-500 hover:text-slate-200 hover:bg-slate-800',
-                            )}
-                        >
-                            <Icon className="h-4 w-4" />
-                        </button>
-                    ))}
-                </div>
+                {/* View-mode tabs */}
+                {(
+                    [
+                        { key: 'list', Icon: List, label: 'Liste' },
+                        { key: 'grid', Icon: LayoutGrid, label: 'Grid' },
+                    ] as const
+                ).map(({ key, Icon, label }) => (
+                    <button
+                        key={key}
+                        onClick={() => setViewMode(key)}
+                        title={label}
+                        className={cn(
+                            'relative flex flex-col items-center justify-center gap-1 py-3 w-full text-[10px] font-medium transition-all select-none',
+                            viewMode === key
+                                ? 'text-slate-100 before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-blue-400'
+                                : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/40',
+                        )}
+                    >
+                        <Icon className="h-4 w-4" />
+                        {label}
+                    </button>
+                ))}
 
                 <div className="flex-1" />
 
@@ -722,9 +720,10 @@ function Home() {
                 <button
                     title="Logout"
                     onClick={() => void onLogout()}
-                    className="w-8 h-8 flex items-center justify-center rounded-full text-slate-500 hover:text-red-400 hover:bg-slate-800 transition-all"
+                    className="flex flex-col items-center justify-center gap-1 py-3 w-full text-[10px] font-medium text-slate-500 hover:text-red-400 hover:bg-slate-800/40 transition-all select-none"
                 >
                     <LogOut className="h-4 w-4" />
+                    Logout
                 </button>
             </nav>
 
@@ -749,7 +748,9 @@ function Home() {
                     >
                         {/* Explorer toolbar */}
                         <div className="h-11 border-b border-slate-800 px-3 flex items-center justify-between gap-2">
-                            <div className="text-sm font-medium text-slate-200">Explorer</div>
+                            <div className="text-sm font-medium text-slate-200">
+                                Explorer
+                            </div>
                             <div className="flex items-center gap-1.5">
                                 {/* Hide completed */}
                                 <label className="flex items-center gap-1.5 cursor-pointer select-none">
@@ -771,9 +772,12 @@ function Home() {
                                     <Dropdown.Trigger>
                                         <button className="h-7 flex items-center gap-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800 px-2 rounded-full text-xs transition-all">
                                             {(() => {
-                                                const opt = completionSortOptions.find(
-                                                    (o) => o.value === completionSort,
-                                                )!;
+                                                const opt =
+                                                    completionSortOptions.find(
+                                                        (o) =>
+                                                            o.value ===
+                                                            completionSort,
+                                                    )!;
                                                 const Icon = opt.icon;
                                                 return (
                                                     <>
@@ -782,7 +786,6 @@ function Home() {
                                                     </>
                                                 );
                                             })()}
-                                            <ChevronDown className="h-3 w-3 opacity-60" />
                                         </button>
                                     </Dropdown.Trigger>
                                     <Dropdown.Popover>
