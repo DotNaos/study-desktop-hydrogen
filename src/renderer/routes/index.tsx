@@ -16,6 +16,7 @@ import {
 import type { FormEvent } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { TreemapCanvas } from '../app/components/TreemapCanvas';
+import { Checkbox } from '../app/components/ui/checkbox';
 import {
     buildInitialCompletionMap,
     collectResourceIds,
@@ -707,13 +708,13 @@ function Home() {
                             <div className="text-sm font-medium">Explorer</div>
                             <div className="flex items-center gap-2">
                                 <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                                    <input
-                                        type="checkbox"
+                                    <Checkbox
+                                        id="hide-completed"
                                         checked={hideCompleted}
-                                        onChange={(e) =>
-                                            setHideCompleted(e.target.checked)
+                                        onCheckedChange={(v) =>
+                                            setHideCompleted(v === true)
                                         }
-                                        className="w-3.5 h-3.5 rounded cursor-pointer accent-slate-400"
+                                        className="h-3.5 w-3.5"
                                     />
                                     <span className="text-xs text-slate-300">
                                         Hide completed
