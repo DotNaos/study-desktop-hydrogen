@@ -1,4 +1,12 @@
-import { Check, ChevronDown, ChevronRight, FileText, Folder, Loader2, Upload } from 'lucide-react';
+import {
+    Check,
+    ChevronDown,
+    ChevronRight,
+    FileText,
+    Folder,
+    Loader2,
+    Upload,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
 import {
     ContextMenu,
@@ -45,13 +53,12 @@ export function ExplorerTree({
         const hasChildren = (node.children?.length ?? 0) > 0;
         const isBusy = completionBusyId === node.id;
 
-        const completionLabel = folder
-            ? completed
-                ? 'Alle Ressourcen als unerledigt markieren'
-                : 'Alle Ressourcen als erledigt markieren'
-            : completed
-              ? 'Als unerledigt markieren'
-              : 'Als erledigt markieren';
+        const markCompletedLabel = folder
+            ? 'Alle Ressourcen als erledigt markieren'
+            : 'Als erledigt markieren';
+        const markUncompletedLabel = folder
+            ? 'Alle Ressourcen als unerledigt markieren'
+            : 'Als unerledigt markieren';
 
         return (
             <div key={node.id}>
@@ -89,9 +96,19 @@ export function ExplorerTree({
                             )}
 
                             {folder ? (
-                                <Folder className="h-4 w-4 text-amber-300" />
+                                <Folder
+                                    className={cn(
+                                        'h-4 w-4',
+                                        completed ? 'text-emerald-400' : 'text-slate-400',
+                                    )}
+                                />
                             ) : (
-                                <FileText className="h-4 w-4 text-sky-300" />
+                                <FileText
+                                    className={cn(
+                                        'h-4 w-4',
+                                        completed ? 'text-emerald-400' : 'text-slate-300',
+                                    )}
+                                />
                             )}
 
                             <span className="truncate flex-1">{node.name}</span>
@@ -105,11 +122,20 @@ export function ExplorerTree({
                     </ContextMenuTrigger>
                     <ContextMenuContent className="bg-slate-900 border-slate-700 text-slate-100">
                         <ContextMenuItem
-                            onClick={() => onPersistCompletion(node, !completed)}
+                            disabled={completed}
+                            onClick={() => onPersistCompletion(node, true)}
                             className="focus:bg-slate-800 focus:text-white"
                         >
                             <Check className="mr-2 h-4 w-4" />
-                            {completionLabel}
+                            {markCompletedLabel}
+                        </ContextMenuItem>
+                        <ContextMenuItem
+                            disabled={!completed}
+                            onClick={() => onPersistCompletion(node, false)}
+                            className="focus:bg-slate-800 focus:text-white"
+                        >
+                            <Check className="mr-2 h-4 w-4" />
+                            {markUncompletedLabel}
                         </ContextMenuItem>
                         <ContextMenuSeparator className="bg-slate-700" />
                         <ContextMenuItem

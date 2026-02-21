@@ -225,6 +225,7 @@ export function TreemapCanvas({
     onExport,
 }: TreemapCanvasProps) {
     const containerRef = useRef<HTMLDivElement>(null)
+    const suppressZoomOutUntilRef = useRef(0)
     const [depthLevel, setDepthLevel] = useState(1) // 0, 1, 2, or 10 for "All"
     const [showDepthPopover, setShowDepthPopover] = useState(false)
     const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
@@ -322,7 +323,17 @@ export function TreemapCanvas({
         }
     }
 
-    const handleZoomOut = () => {
+    const suppressNextZoomOut = () => {
+        suppressZoomOutUntilRef.current = Date.now() + 350
+    }
+
+    const handleZoomOut = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (Date.now() < suppressZoomOutUntilRef.current) {
+            return
+        }
+        if (e.target !== e.currentTarget) {
+            return
+        }
         setShowDepthPopover(false)
         if (ancestors.length > 1) {
             const parentIndex = ancestors.length - 2
@@ -574,30 +585,36 @@ export function TreemapCanvas({
                                 <ContextMenuContent className="bg-neutral-900 border-neutral-700">
                                     <ContextMenuItem
                                         disabled={!onToggleCompletion}
-                                        onClick={() =>
-                                            onToggleCompletion?.(item, !isComplete)
-                                        }
+                                        onClick={() => {
+                                            suppressNextZoomOut()
+                                            onToggleCompletion?.(item, true)
+                                        }}
                                         className="text-neutral-200 focus:bg-neutral-800 focus:text-white"
                                     >
-                                        <Check
-                                            className={cn(
-                                                'w-4 h-4 mr-2',
-                                                isComplete
-                                                    ? 'text-green-500'
-                                                    : 'text-neutral-500',
-                                            )}
-                                        />
+                                        <Check className="w-4 h-4 mr-2 text-green-500" />
                                         {isLeaf
-                                            ? isComplete
-                                                ? 'Als unerledigt markieren'
-                                                : 'Als erledigt markieren'
-                                            : isComplete
-                                              ? 'Alle Ressourcen als unerledigt markieren'
-                                              : 'Alle Ressourcen als erledigt markieren'}
+                                            ? 'Als erledigt markieren'
+                                            : 'Alle Ressourcen als erledigt markieren'}
+                                    </ContextMenuItem>
+                                    <ContextMenuItem
+                                        disabled={!onToggleCompletion}
+                                        onClick={() => {
+                                            suppressNextZoomOut()
+                                            onToggleCompletion?.(item, false)
+                                        }}
+                                        className="text-neutral-200 focus:bg-neutral-800 focus:text-white"
+                                    >
+                                        <Check className="w-4 h-4 mr-2 text-neutral-500" />
+                                        {isLeaf
+                                            ? 'Als unerledigt markieren'
+                                            : 'Alle Ressourcen als unerledigt markieren'}
                                     </ContextMenuItem>
                                     <ContextMenuItem
                                         disabled={!onExport}
-                                        onClick={() => onExport?.(item)}
+                                        onClick={() => {
+                                            suppressNextZoomOut()
+                                            onExport?.(item)
+                                        }}
                                         className="text-neutral-200 focus:bg-neutral-800 focus:text-white"
                                     >
                                         Exportieren...

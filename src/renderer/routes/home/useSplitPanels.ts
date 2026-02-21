@@ -67,19 +67,17 @@ export function useSplitPanels({
 
             if (rawRatio <= COLLAPSE_TO_VIEWER_THRESHOLD) {
                 setPanelMode('viewer-only');
-                stopResize();
                 return;
             }
             if (rawRatio >= COLLAPSE_TO_EXPLORER_THRESHOLD) {
                 setPanelMode('explorer-only');
-                stopResize();
                 return;
             }
 
             setPanelMode('split');
             setSplitRatio(clampSplitRatio(rawRatio));
         },
-        [clampSplitRatio, selectedResourceId, stopResize],
+        [clampSplitRatio, selectedResourceId],
     );
 
     const onResizeStart = useCallback(

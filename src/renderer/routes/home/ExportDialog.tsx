@@ -1,23 +1,34 @@
-import { Share2 } from 'lucide-react';
+import { ExternalLink, Share2 } from 'lucide-react';
 import type { ExportMode } from './types';
 
 interface ExportDialogProps {
     nodeName: string;
+    isFolder: boolean;
+    goodnotesAvailable: boolean;
     exportMode: ExportMode | null;
     exportError: string | null;
     onSaveAs: () => void;
     onShare: () => void;
+    onOpenWith: () => void;
+    onOpenGoodnotes: () => void;
     onClose: () => void;
 }
 
 export function ExportDialog({
     nodeName,
+    isFolder,
+    goodnotesAvailable,
     exportMode,
     exportError,
     onSaveAs,
     onShare,
+    onOpenWith,
+    onOpenGoodnotes,
     onClose,
 }: ExportDialogProps) {
+    const goodnotesDisabled =
+        !goodnotesAvailable || isFolder || exportMode !== null;
+
     return (
         <div className="fixed inset-0 z-50 bg-black/65 flex items-center justify-center px-4">
             <div className="w-full max-w-lg rounded-xl border border-slate-700 bg-slate-900 p-5">
@@ -53,6 +64,37 @@ export function ExportDialog({
                         </div>
                         <div className="text-xs text-slate-400">
                             ZIP erstellen und macOS Share-Dialog öffnen
+                        </div>
+                    </button>
+
+                    <button
+                        type="button"
+                        disabled={exportMode !== null}
+                        onClick={onOpenWith}
+                        className="w-full rounded-lg border border-slate-700 px-3 py-2 text-sm text-left hover:bg-slate-800 disabled:opacity-60"
+                    >
+                        <div className="font-medium flex items-center gap-2">
+                            <ExternalLink className="h-4 w-4" />
+                            Open With...
+                        </div>
+                        <div className="text-xs text-slate-400">
+                            App auswählen und Export direkt darin öffnen
+                        </div>
+                    </button>
+
+                    <button
+                        type="button"
+                        disabled={goodnotesDisabled}
+                        onClick={onOpenGoodnotes}
+                        className="w-full rounded-lg border border-slate-700 px-3 py-2 text-sm text-left hover:bg-slate-800 disabled:opacity-60"
+                    >
+                        <div className="font-medium">Open in Goodnotes</div>
+                        <div className="text-xs text-slate-400">
+                            {!goodnotesAvailable
+                                ? 'Goodnotes ist nicht installiert'
+                                : isFolder
+                                  ? 'Nur für einzelne PDF-Ressourcen verfügbar'
+                                  : 'Direkt in Goodnotes öffnen'}
                         </div>
                     </button>
                 </div>

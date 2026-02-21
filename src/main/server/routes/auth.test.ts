@@ -6,14 +6,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const {
     bootstrapMoodleAuthMock,
     authenticateMoodleCredentialsMock,
+    clearMoodleAuthMock,
     isAuthenticatedMock,
     setMoodleCookiesMock,
+    storeDeleteMock,
     storeGetMock,
 } = vi.hoisted(() => ({
     bootstrapMoodleAuthMock: vi.fn(),
     authenticateMoodleCredentialsMock: vi.fn(),
+    clearMoodleAuthMock: vi.fn(),
     isAuthenticatedMock: vi.fn(),
     setMoodleCookiesMock: vi.fn(),
+    storeDeleteMock: vi.fn(),
     storeGetMock: vi.fn(),
 }));
 
@@ -29,11 +33,13 @@ vi.mock('../../providers', () => ({
 }));
 
 vi.mock('../../moodle', () => ({
+    clearMoodleAuth: clearMoodleAuthMock,
     setMoodleCookies: setMoodleCookiesMock,
 }));
 
 vi.mock('../../config', () => ({
     store: {
+        delete: storeDeleteMock,
         get: storeGetMock,
     },
 }));
@@ -142,5 +148,20 @@ describe('auth routes', () => {
         const payload = await response.json();
         expect(response.status).toBe(401);
         expect(payload.error).toBe('LOGIN_FAILED');
+    });
+
+    it('logs out and clears persisted moodle session', async () => {
+        isAuthenticatedMock.mockReturnValue(false);
+
+        const response = await fetch(`${baseUrl}/logout`, {
+            method: 'POST',
+        });
+
+        const payload = await response.json();
+        expect(response.status).toBe(200);
+        expect(payload.ok).toBe(true);
+        expect(payload.authenticated).toBe(false);
+        expect(clearMoodleAuthMock).toHaveBeenCalledTimes(1);
+        expect(storeDeleteMock).toHaveBeenCalledWith('moodleSession');
     });
 });

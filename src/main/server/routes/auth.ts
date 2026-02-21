@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { setMoodleCookies } from "../../moodle";
+import { clearMoodleAuth, setMoodleCookies } from "../../moodle";
 import { primaryProvider } from "../../providers";
 import { authenticateMoodleCredentials, bootstrapMoodleAuth } from "../../startupAuth";
 import { ProviderErrorCodes } from "../../types";
@@ -76,7 +76,17 @@ router.post("/session", async (req, res) => {
     res.json({ ok: true, authenticated: primaryProvider.isAuthenticated() });
   } catch (error) {
     res.status(500).json({ error: "SESSION_FAILED" });
-  }
+    }
+});
+
+router.post("/logout", (_req, res) => {
+  clearMoodleAuth();
+  store.delete("moodleSession");
+
+  res.json({
+    ok: true,
+    authenticated: primaryProvider.isAuthenticated(),
+  });
 });
 
 export default router;

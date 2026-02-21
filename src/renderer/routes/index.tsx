@@ -1,19 +1,25 @@
 import { createFileRoute } from '@tanstack/react-router';
 import {
+    ArrowDown,
     ArrowLeftFromLine,
     ArrowRightFromLine,
+    ArrowUp,
+    ArrowUpDown,
     GripVertical,
     LayoutGrid,
     List,
     Loader2,
+    LogOut,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { TreemapCanvas } from '../app/components/TreemapCanvas';
 import {
     buildInitialCompletionMap,
     collectResourceIds,
     flattenNodes,
+    getNodeCompletionValue,
+    isFolderNode,
     isResourceNode,
     type ExplorerNode,
 } from '../app/treeUtils';
@@ -23,6 +29,7 @@ import { readJson, resolveApiBase } from './home/api';
 import { ExportDialog } from './home/ExportDialog';
 import { ExplorerTree } from './home/ExplorerTree';
 import { LoginGate } from './home/LoginGate';
+import { ToastStack, type ToastItem } from './home/ToastStack';
 import {
     type AuthStatusResponse,
     type ExportMode,
@@ -37,6 +44,10 @@ export const Route = createFileRoute('/')({
 
 function Home() {
     const [viewMode, setViewMode] = useState<ViewMode>('list');
+    const [hideCompleted, setHideCompleted] = useState(false);
+    const [completionSort, setCompletionSort] = useState<
+        'none' | 'completed-first' | 'completed-last'
+    >('none');
     const [apiBase, setApiBase] = useState<string>('');
     const [authStatus, setAuthStatus] = useState<AuthStatusResponse | null>(null);
     const [authLoading, setAuthLoading] = useState(true);
@@ -47,7 +58,6 @@ function Home() {
 
     const [roots, setRoots] = useState<ExplorerNode[]>([]);
     const [treeLoading, setTreeLoading] = useState(false);
-    const [treeError, setTreeError] = useState<string | null>(null);
     const [completionMap, setCompletionMap] = useState<Map<string, boolean>>(
         () => new Map(),
     );
@@ -60,7 +70,9 @@ function Home() {
     const [exportNode, setExportNode] = useState<ExplorerNode | null>(null);
     const [exportMode, setExportMode] = useState<ExportMode | null>(null);
     const [exportError, setExportError] = useState<string | null>(null);
-    const [notice, setNotice] = useState<string | null>(null);
+    const [goodnotesAvailable, setGoodnotesAvailable] = useState(false);
+    const [toasts, setToasts] = useState<ToastItem[]>([]);
+    const toastTimeoutsRef = useRef<number[]>([]);
 
     const nodeMap = useMemo(() => {
         return new Map(flattenNodes(roots).map((node) => [node.id, node]));
@@ -100,9 +112,65 @@ function Home() {
         return roots.map(apply);
     }, [roots, completionMap]);
 
+    const visibleRoots = useMemo(() => {
+        if (!hideCompleted) {
+            return rootsWithCompletion;
+        }
+
+        const filterNodes = (nodes: ExplorerNode[]): ExplorerNode[] => {
+            const next: ExplorerNode[] = [];
+            for (const node of nodes) {
+                if (isResourceNode(node)) {
+                    if (!getNodeCompletionValue(node, completionMap)) {
+                        next.push(node);
+                    }
+                    continue;
+                }
+
+                const filteredChildren = filterNodes(node.children ?? []);
+                if (filteredChildren.length > 0) {
+                    next.push({
+                        ...node,
+                        children: filteredChildren,
+                    });
+                }
+            }
+            return next;
+        };
+
+        return filterNodes(rootsWithCompletion);
+    }, [completionMap, hideCompleted, rootsWithCompletion]);
+
+    const sortedRoots = useMemo(() => {
+        if (completionSort === 'none') {
+            return visibleRoots;
+        }
+
+        const sortNodes = (nodes: ExplorerNode[]): ExplorerNode[] => {
+            const nodesWithSortedChildren = nodes.map((node) => ({
+                ...node,
+                children: node.children ? sortNodes(node.children) : node.children,
+            }));
+
+            return [...nodesWithSortedChildren].sort((a, b) => {
+                const aCompleted = getNodeCompletionValue(a, completionMap);
+                const bCompleted = getNodeCompletionValue(b, completionMap);
+                if (aCompleted === bCompleted) {
+                    return 0;
+                }
+                if (completionSort === 'completed-first') {
+                    return aCompleted ? -1 : 1;
+                }
+                return aCompleted ? 1 : -1;
+            });
+        };
+
+        return sortNodes(visibleRoots);
+    }, [completionMap, completionSort, visibleRoots]);
+
     const treemapData = useMemo(
-        () => transformCoursesToZoomData(rootsWithCompletion as any),
-        [rootsWithCompletion],
+        () => transformCoursesToZoomData(sortedRoots as any),
+        [sortedRoots],
     );
 
     const viewerSrc = selectedResource
@@ -133,13 +201,36 @@ function Home() {
         [setPanelMode],
     );
 
+    const dismissToast = useCallback((id: string) => {
+        setToasts((prev) => prev.filter((toast) => toast.id !== id));
+    }, []);
+
+    const pushToast = useCallback(
+        (message: string, tone: ToastItem['tone']) => {
+            const id = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+            setToasts((prev) => [...prev, { id, message, tone }]);
+            const timeoutId = window.setTimeout(() => {
+                dismissToast(id);
+            }, 3400);
+            toastTimeoutsRef.current.push(timeoutId);
+        },
+        [dismissToast],
+    );
+
+    useEffect(() => {
+        return () => {
+            for (const timeoutId of toastTimeoutsRef.current) {
+                window.clearTimeout(timeoutId);
+            }
+        };
+    }, []);
+
     const loadTree = useCallback(async () => {
         if (!apiBase) {
             return;
         }
 
         setTreeLoading(true);
-        setTreeError(null);
         try {
             const response = await fetch(`${apiBase}/nodes?mode=tree`);
             if (response.status === 401) {
@@ -170,15 +261,16 @@ function Home() {
                 prev && nodeIds.has(prev) ? prev : null,
             );
         } catch (error) {
-            setTreeError(
+            pushToast(
                 error instanceof Error
                     ? error.message
                     : 'Kursstruktur konnte nicht geladen werden.',
+                'error',
             );
         } finally {
             setTreeLoading(false);
         }
-    }, [apiBase]);
+    }, [apiBase, pushToast]);
 
     const loadAuthStatus = useCallback(async () => {
         if (!apiBase) {
@@ -209,6 +301,18 @@ function Home() {
 
     useEffect(() => {
         void resolveApiBase().then((value) => setApiBase(value));
+    }, []);
+
+    useEffect(() => {
+        const loadGoodnotesAvailability = async () => {
+            try {
+                const available = await window.studySync?.isGoodnotesAvailable?.();
+                setGoodnotesAvailable(Boolean(available));
+            } catch {
+                setGoodnotesAvailable(false);
+            }
+        };
+        void loadGoodnotesAvailability();
     }, []);
 
     useEffect(() => {
@@ -263,6 +367,37 @@ function Home() {
         }
     };
 
+    const onLogout = useCallback(async () => {
+        try {
+            const response = await fetch(`${apiBase}/auth/logout`, {
+                method: 'POST',
+            });
+            const payload = await readJson<{ ok?: boolean; error?: string }>(response);
+            if (!response.ok || !payload.ok) {
+                throw new Error(payload.error || 'LOGOUT_FAILED');
+            }
+
+            setAuthStatus((prev) => ({
+                authenticated: false,
+                error: 'AUTH_REQUIRED',
+                selectedSchool: prev?.selectedSchool ?? null,
+                hasStoredCredentials: prev?.hasStoredCredentials ?? false,
+            }));
+            setAuthError(null);
+            setLoginPassword('');
+            setRoots([]);
+            setCompletionMap(new Map());
+            setExpandedIds(new Set());
+            setSelectedResourceId(null);
+            setExportNode(null);
+        } catch (error) {
+            pushToast(
+                error instanceof Error ? error.message : 'Logout fehlgeschlagen.',
+                'error',
+            );
+        }
+    }, [apiBase, pushToast]);
+
     const toggleExpanded = (nodeId: string) => {
         setExpandedIds((prev) => {
             const next = new Set(prev);
@@ -275,66 +410,66 @@ function Home() {
         });
     };
 
-    const persistCompletion = async (
-        node: ExplorerNode,
-        completed: boolean,
-    ): Promise<void> => {
-        const ids = collectResourceIds(node);
-        if (ids.length === 0) {
-            return;
-        }
-
-        setCompletionBusyId(node.id);
-        setNotice(null);
-        setTreeError(null);
-        try {
-            if (ids.length === 1) {
-                const response = await fetch(
-                    `${apiBase}/nodes/${encodeURIComponent(ids[0])}/completion`,
-                    {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ completed }),
-                    },
-                );
-                if (!response.ok) {
-                    throw new Error(`Completion update failed (${response.status})`);
-                }
-            } else {
-                const updates = Object.fromEntries(ids.map((id) => [id, completed]));
-                const response = await fetch(`${apiBase}/nodes/completion/batch`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ updates }),
-                });
-                if (!response.ok) {
-                    throw new Error(`Batch completion failed (${response.status})`);
-                }
+    const persistCompletion = useCallback(
+        async (node: ExplorerNode, completed: boolean): Promise<void> => {
+            const ids = collectResourceIds(node);
+            if (ids.length === 0) {
+                return;
             }
 
-            setCompletionMap((prev) => {
-                const next = new Map(prev);
-                for (const id of ids) {
-                    next.set(id, completed);
+            setCompletionBusyId(node.id);
+            try {
+                if (ids.length === 1) {
+                    const response = await fetch(
+                        `${apiBase}/nodes/${encodeURIComponent(ids[0])}/completion`,
+                        {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ completed }),
+                        },
+                    );
+                    if (!response.ok) {
+                        throw new Error(`Completion update failed (${response.status})`);
+                    }
+                } else {
+                    const updates = Object.fromEntries(ids.map((id) => [id, completed]));
+                    const response = await fetch(`${apiBase}/nodes/completion/batch`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ updates }),
+                    });
+                    if (!response.ok) {
+                        throw new Error(`Batch completion failed (${response.status})`);
+                    }
                 }
-                return next;
-            });
 
-            setNotice(
-                completed
-                    ? `${ids.length} Ressource(n) als erledigt markiert`
-                    : `${ids.length} Ressource(n) als unerledigt markiert`,
-            );
-        } catch (error) {
-            setTreeError(
-                error instanceof Error
-                    ? error.message
-                    : 'Completion konnte nicht gespeichert werden.',
-            );
-        } finally {
-            setCompletionBusyId(null);
-        }
-    };
+                setCompletionMap((prev) => {
+                    const next = new Map(prev);
+                    for (const id of ids) {
+                        next.set(id, completed);
+                    }
+                    return next;
+                });
+
+                pushToast(
+                    completed
+                        ? `${ids.length} Ressource(n) als erledigt markiert`
+                        : `${ids.length} Ressource(n) als unerledigt markiert`,
+                    'success',
+                );
+            } catch (error) {
+                pushToast(
+                    error instanceof Error
+                        ? error.message
+                        : 'Completion konnte nicht gespeichert werden.',
+                    'error',
+                );
+            } finally {
+                setCompletionBusyId(null);
+            }
+        },
+        [apiBase, pushToast],
+    );
 
     const openExportDialog = (node: ExplorerNode) => {
         setExportNode(node);
@@ -342,48 +477,105 @@ function Home() {
         setExportError(null);
     };
 
-    const runExport = async (mode: ExportMode) => {
-        if (!exportNode) {
-            return;
-        }
-        setExportMode(mode);
-        setExportError(null);
-        setNotice(null);
-
-        try {
-            if (mode === 'saveAs') {
-                const result = await window.studySync?.exportSaveAs?.(exportNode.id);
-                if (!result) {
-                    throw new Error('EXPORT_BRIDGE_UNAVAILABLE');
-                }
-                if (!result.ok) {
-                    if (result.cancelled) {
-                        setExportNode(null);
-                        return;
-                    }
-                    throw new Error(result.error || 'EXPORT_SAVE_AS_FAILED');
-                }
-                setNotice(`Export gespeichert: ${result.fileCount ?? 0} Datei(en)`);
-            } else {
-                const result = await window.studySync?.exportShare?.(exportNode.id);
-                if (!result) {
-                    throw new Error('EXPORT_BRIDGE_UNAVAILABLE');
-                }
-                if (!result.ok) {
-                    throw new Error(result.error || 'EXPORT_SHARE_FAILED');
-                }
-                setNotice(`Share-ZIP erstellt: ${result.fileCount ?? 0} Datei(en)`);
+    const runExport = useCallback(
+        async (mode: ExportMode) => {
+            if (!exportNode) {
+                return;
             }
+            setExportMode(mode);
+            setExportError(null);
 
-            setExportNode(null);
-        } catch (error) {
-            setExportError(
-                error instanceof Error ? error.message : 'Export fehlgeschlagen.',
-            );
-        } finally {
-            setExportMode(null);
-        }
-    };
+            try {
+                if (mode === 'saveAs') {
+                    const result = await window.studySync?.exportSaveAs?.(exportNode.id);
+                    if (!result) {
+                        throw new Error('EXPORT_BRIDGE_UNAVAILABLE');
+                    }
+                    if (!result.ok) {
+                        if (result.cancelled) {
+                            setExportNode(null);
+                            return;
+                        }
+                        throw new Error(result.error || 'EXPORT_SAVE_AS_FAILED');
+                    }
+                    pushToast(
+                        `Export gespeichert: ${result.fileCount ?? 0} Datei(en)`,
+                        'success',
+                    );
+                } else if (mode === 'share') {
+                    const result = await window.studySync?.exportShare?.(exportNode.id);
+                    if (!result) {
+                        throw new Error('EXPORT_BRIDGE_UNAVAILABLE');
+                    }
+                    if (!result.ok) {
+                        throw new Error(result.error || 'EXPORT_SHARE_FAILED');
+                    }
+                    pushToast(
+                        `Share-ZIP erstellt: ${result.fileCount ?? 0} Datei(en)`,
+                        'success',
+                    );
+                } else if (mode === 'openWith') {
+                    const result = await window.studySync?.exportOpenWith?.(exportNode.id);
+                    if (!result) {
+                        throw new Error('EXPORT_BRIDGE_UNAVAILABLE');
+                    }
+                    if (!result.ok) {
+                        if (result.cancelled) {
+                            setExportNode(null);
+                            return;
+                        }
+                        throw new Error(result.error || 'EXPORT_OPEN_WITH_FAILED');
+                    }
+                    pushToast(
+                        `Export geöffnet: ${result.fileCount ?? 0} Datei(en)`,
+                        'success',
+                    );
+                } else if (isFolderNode(exportNode)) {
+                    throw new Error('GOODNOTES_RESOURCE_ONLY');
+                } else {
+                    const result = await window.studySync?.exportOpenGoodnotes?.(
+                        exportNode.id,
+                    );
+                    if (!result) {
+                        throw new Error('EXPORT_BRIDGE_UNAVAILABLE');
+                    }
+                    if (!result.ok) {
+                        throw new Error(result.error || 'EXPORT_GOODNOTES_FAILED');
+                    }
+                    pushToast(
+                        `In Goodnotes geöffnet: ${result.fileCount ?? 0} Datei(en)`,
+                        'success',
+                    );
+                }
+
+                setExportNode(null);
+            } catch (error) {
+                const rawMessage =
+                    error instanceof Error ? error.message : 'Export fehlgeschlagen.';
+                const message =
+                    rawMessage === 'GOODNOTES_RESOURCE_ONLY'
+                        ? 'Goodnotes ist nur für einzelne PDF-Ressourcen verfügbar.'
+                        : rawMessage === 'GOODNOTES_NOT_INSTALLED'
+                          ? 'Goodnotes ist nicht installiert.'
+                          : rawMessage;
+                setExportError(message);
+                pushToast(message, 'error');
+            } finally {
+                setExportMode(null);
+            }
+        },
+        [exportNode, pushToast],
+    );
+
+    const completionSortOptions: Array<{
+        value: 'none' | 'completed-first' | 'completed-last';
+        label: string;
+        icon: typeof ArrowUpDown;
+    }> = [
+        { value: 'none', label: 'Neutral', icon: ArrowUpDown },
+        { value: 'completed-last', label: 'Done ↓', icon: ArrowDown },
+        { value: 'completed-first', label: 'Done ↑', icon: ArrowUp },
+    ];
 
     if (authLoading || !apiBase) {
         return (
@@ -413,26 +605,6 @@ function Home() {
 
     return (
         <div className="h-screen flex flex-col bg-slate-950 text-slate-100">
-            <header className="h-12 border-b border-slate-800 flex items-center justify-between px-4">
-                <div className="text-sm font-medium tracking-wide">Study Desktop</div>
-                <div className="text-xs text-slate-400">
-                    {authStatus.selectedSchool || 'moodle'}
-                </div>
-            </header>
-
-            {(notice || treeError) && (
-                <div
-                    className={cn(
-                        'px-4 py-2 text-sm border-b',
-                        treeError
-                            ? 'bg-rose-900/20 text-rose-300 border-rose-900/40'
-                            : 'bg-emerald-900/20 text-emerald-300 border-emerald-900/40',
-                    )}
-                >
-                    {treeError || notice}
-                </div>
-            )}
-
             <main className="flex-1 min-h-0">
                 <div ref={splitContainerRef} className="h-full w-full flex min-w-0">
                     <section
@@ -449,6 +621,49 @@ function Home() {
                         <div className="h-11 border-b border-slate-800 px-3 flex items-center justify-between gap-3">
                             <div className="text-sm font-medium">Explorer</div>
                             <div className="flex items-center gap-2">
+                                <label className="flex items-center gap-2 text-xs text-slate-300 mr-1">
+                                    <input
+                                        type="checkbox"
+                                        checked={hideCompleted}
+                                        onChange={(event) =>
+                                            setHideCompleted(event.target.checked)
+                                        }
+                                        className="h-3.5 w-3.5 rounded border-slate-600 bg-slate-900 text-sky-400 focus:ring-sky-400/40"
+                                    />
+                                    Hide completed
+                                </label>
+                                <label className="flex items-center gap-2 text-xs text-slate-300">
+                                    Sort
+                                </label>
+                                <div
+                                    className="flex items-center rounded-lg border border-slate-700 overflow-hidden"
+                                    role="group"
+                                    aria-label="Sortierung nach Completion"
+                                >
+                                    {completionSortOptions.map((option, index) => {
+                                        const Icon = option.icon;
+                                        const active = completionSort === option.value;
+                                        return (
+                                            <button
+                                                key={option.value}
+                                                type="button"
+                                                onClick={() => setCompletionSort(option.value)}
+                                                className={cn(
+                                                    'px-2.5 h-7 text-[11px] flex items-center gap-1.5 transition-colors',
+                                                    index > 0 && 'border-l border-slate-700',
+                                                    active
+                                                        ? 'bg-slate-200 text-slate-900'
+                                                        : 'bg-slate-900 text-slate-300 hover:bg-slate-800',
+                                                )}
+                                                title={option.label}
+                                                aria-pressed={active}
+                                            >
+                                                <Icon className="h-3.5 w-3.5" />
+                                                {option.label}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                                 <div className="flex items-center rounded-lg border border-slate-700 overflow-hidden">
                                     <button
                                         type="button"
@@ -477,6 +692,15 @@ function Home() {
                                         Grid
                                     </button>
                                 </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => void onLogout()}
+                                    className="rounded-md border border-slate-700 p-1.5 text-slate-300 hover:bg-slate-800 hover:text-white"
+                                    title="Logout"
+                                >
+                                    <LogOut className="h-4 w-4" />
+                                </button>
 
                                 {selectedResource && (
                                     <button
@@ -518,14 +742,14 @@ function Home() {
                                             <Loader2 className="h-4 w-4 animate-spin" />
                                             Lade Inhalte...
                                         </div>
-                                    ) : roots.length === 0 ? (
+                                    ) : sortedRoots.length === 0 ? (
                                         <div className="px-3 py-4 text-sm text-slate-400">
                                             Keine Inhalte gefunden.
                                         </div>
                                     ) : (
                                         <div className="px-2 pb-3">
                                             <ExplorerTree
-                                                roots={roots}
+                                                roots={sortedRoots}
                                                 completionMap={completionMap}
                                                 expandedIds={expandedIds}
                                                 selectedResourceId={selectedResourceId}
@@ -547,7 +771,7 @@ function Home() {
                                             <Loader2 className="h-4 w-4 animate-spin mr-2" />
                                             Lade Inhalte...
                                         </div>
-                                    ) : roots.length === 0 ? (
+                                    ) : sortedRoots.length === 0 ? (
                                         <div className="h-full flex items-center justify-center text-sm text-slate-400">
                                             Keine Inhalte gefunden.
                                         </div>
@@ -656,13 +880,18 @@ function Home() {
             {exportNode && (
                 <ExportDialog
                     nodeName={exportNode.name}
+                    isFolder={isFolderNode(exportNode)}
+                    goodnotesAvailable={goodnotesAvailable}
                     exportMode={exportMode}
                     exportError={exportError}
                     onSaveAs={() => void runExport('saveAs')}
                     onShare={() => void runExport('share')}
+                    onOpenWith={() => void runExport('openWith')}
+                    onOpenGoodnotes={() => void runExport('openGoodnotes')}
                     onClose={() => setExportNode(null)}
                 />
             )}
+            <ToastStack toasts={toasts} onDismiss={dismissToast} />
         </div>
     );
 }

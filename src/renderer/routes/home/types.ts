@@ -11,7 +11,7 @@ export interface LoginResponse {
     error?: string;
 }
 
-export type ExportMode = 'saveAs' | 'share';
+export type ExportMode = 'saveAs' | 'share' | 'openWith' | 'openGoodnotes';
 export type PanelMode = 'explorer-only' | 'split' | 'viewer-only';
 export type ViewMode = 'list' | 'grid';
 
