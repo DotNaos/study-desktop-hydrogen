@@ -1,14 +1,34 @@
-# OS
-.DS_Store
-._*
-.Spotlight-V100
-.Trashes
+# Dependencies
+node_modules/
 
-# Editors / IDEs
+# Build output
+dist/
+out/
+
+# Electron Builder output
+release/
+.chromium/
+
+# Vite cache
+.vite/
+
+# Local CLI test data
+.os-companion-test/
+
+# TypeScript
+*.tsbuildinfo
+
+# IDE
 .idea/
 .vscode/
 *.swp
 *.swo
+
+# Testing
+coverage/
+
+# ESLint
+.eslintcache
 
 # Logs
 logs/
@@ -18,34 +38,13 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Dependencies
-node_modules/
-**/node_modules/
-
-# Build outputs
-dist/
-build/
-out/
-release/
-coverage/
-.vite/
-.turbo/
-.react-router/
-
-# TypeScript
-*.tsbuildinfo
-
 # Environment
 .env
-.env.*
-!.env.example
-!.env.*.example
+.env.local
+.env.*.local
 
-# Local data / caches
-*.db
-*.sqlite
-*.sqlite3
-.os-companion-test/
-
-# Tooling metadata
-.jj/
+# macOS
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes

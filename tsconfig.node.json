@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "strict": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@main/*": ["src/main/*"],
+      "@shared/*": ["src/shared/*"],
+      "@aryazos/ts-base/logging": ["src/shared/logging.ts"],
+      "@aryazos/study/types": ["src/shared/studyTypes.ts"]
+    }
+  },
+  "include": ["electron.vite.config.*", "src/main/**/*", "src/preload/**/*"],
+  "exclude": ["node_modules"]
+}

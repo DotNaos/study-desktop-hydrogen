@@ -1,0 +1,115 @@
+name: Publish Study Sync Image
+
+on:
+    push:
+        branches: [main, dev]
+        paths:
+            - 'apps/study/study-sync/**'
+            - 'libs/**'
+            - '.github/workflows/publish-study-sync.yml'
+    workflow_dispatch:
+        inputs:
+            channel:
+                description: 'Release channel (stable or dev)'
+                required: false
+                default: 'stable'
+                type: choice
+                options:
+                    - stable
+                    - dev
+
+permissions:
+    contents: read
+    packages: write
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout Monorepo
+              uses: actions/checkout@v4
+
+            - name: Determine channel
+              id: channel
+              run: |
+                  if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+                    echo "channel=${{ inputs.channel }}" >> $GITHUB_OUTPUT
+                  elif [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
+                    echo "channel=dev" >> $GITHUB_OUTPUT
+                  else
+                    echo "channel=stable" >> $GITHUB_OUTPUT
+                  fi
+
+            # Infra is in runtimes/server/infra
+
+            - name: Log in to GHCR
+              uses: docker/login-action@v3
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Extract Docker metadata
+              id: meta
+              uses: docker/metadata-action@v5
+              with:
+                  images: ghcr.io/dotnaos/aryazos-study-sync
+                  tags: |
+                      type=sha
+                      type=raw,value=latest,enable=${{ steps.channel.outputs.channel == 'stable' }}
+                      type=raw,value=dev,enable=${{ steps.channel.outputs.channel == 'dev' }}
+
+            - name: Build and push
+              uses: docker/build-push-action@v5
+              with:
+                  # Context must remain '.' (root) to access libs?
+                  # But Dockerfile expects to be at root?
+                  # Yes, 'context: .' is root of checkout (monorepo root).
+                  # File path relative to context.
+                  context: .
+                  file: apps/study/study-sync/docker/Dockerfile
+                  push: true
+                  tags: ${{ steps.meta.outputs.tags }}
+                  labels: ${{ steps.meta.outputs.labels }}
+                  platforms: linux/amd64
+
+    deploy:
+        needs: build
+        runs-on: ubuntu-latest
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev'
+        steps:
+            - name: Checkout Monorepo
+              uses: actions/checkout@v4
+
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: '3.11'
+
+            - name: Install Ansible
+              run: pip install ansible
+
+            - name: Configure SSH
+              run: |
+                  mkdir -p ~/.ssh
+                  echo "${{ secrets.DEPLOY_SSH_KEY }}" | base64 -d > ~/.ssh/id_ed25519
+                  chmod 600 ~/.ssh/id_ed25519
+                  chmod 700 ~/.ssh
+                  ssh-keyscan -H study-sync.aryazos.ch >> ~/.ssh/known_hosts
+
+            - name: Run Ansible Deployment
+              working-directory: apps/study/infra
+              env:
+                  ARYAZOS_STUDY_USERNAME: ${{ secrets.ARYAZOS_STUDY_USERNAME }}
+                  ARYAZOS_STUDY_PASSWORD: ${{ secrets.ARYAZOS_STUDY_PASSWORD }}
+                  ARYAZOS_GHCR_USERNAME: ${{ secrets.ARYAZOS_GHCR_USERNAME }}
+                  ARYAZOS_GHCR_TOKEN: ${{ secrets.ARYAZOS_GHCR_TOKEN }}
+                  CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+                  CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
+                  GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+              run: |
+                  # Ansible config in apps/study/infra/ansible.cfg handles paths
+                  # But inventory path in playbook command needs care relative to working-directory
+                  # ansible.cfg says: inventory = ../../../runtimes/server/infra/inventories/production/hosts.ini
+
+                  ansible-playbook -i ../../../runtimes/server/infra/inventories/production playbooks/site.yml

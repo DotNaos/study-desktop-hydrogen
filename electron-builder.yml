@@ -1,0 +1,36 @@
+appId: com.aryazos.study-desktop
+productName: Study Desktop
+directories:
+    buildResources: build
+files:
+    - out/**
+    - resources/**
+    - .chromium/**
+    - package.json
+    - '!**/*.map'
+asar: true
+asarUnpack:
+    - '**/*.node'
+extraMetadata:
+    main: out/main/index.js
+nodeGypRebuild: false
+buildDependenciesFromSource: false
+npmRebuild: false
+mac:
+    entitlementsInherit: build/entitlements.mac.plist
+    hardenedRuntime: true
+    notarize: true
+    target:
+        - target: dmg
+          arch:
+              - arm64
+win:
+    target:
+        - target: nsis
+          arch:
+              - x64
+linux:
+    target:
+        - target: AppImage
+          arch:
+              - x64

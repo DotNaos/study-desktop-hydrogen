@@ -1,0 +1,29 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "out/cli",
+    "rootDir": "..",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "baseUrl": ".",
+    "paths": {
+        "@aryazos/ts-base": ["../ts-base/src/index.ts"],
+        "@aryazos/ts-base/*": ["../ts-base/src/*"]
+    },
+    "types": ["node"]
+  },
+  "include": [
+    "src/cli/**/*",
+    "src/shared/**/*",
+    "../ts-base/src/**/*",
+    "../study/cli/src/**/*",
+    "src/main/services/studySyncService.ts",
+    "src/main/moodle/**/*",
+    "src/main/downloader/**/*",
+    "src/main/providers.ts",
+    "src/main/remoteCache.ts",
+    "src/main/types.ts",
+    "src/main/vaultApi.ts",
+    "src/main/schools.ts"
+  ]
+}
