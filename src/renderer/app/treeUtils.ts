@@ -69,11 +69,17 @@ export function collectAllIds(node: ExplorerNode): string[] {
     return result;
 }
 
-export function getLastDescendantId(node: ExplorerNode): string {
-    if (!node.children || node.children.length === 0) {
+export function getLastVisibleDescendantId(
+    node: ExplorerNode,
+    isExpanded: (id: string) => boolean,
+): string {
+    if (!node.children || node.children.length === 0 || !isExpanded(node.id)) {
         return node.id;
     }
-    return getLastDescendantId(node.children[node.children.length - 1]);
+    return getLastVisibleDescendantId(
+        node.children[node.children.length - 1],
+        isExpanded,
+    );
 }
 
 export function flattenNodes(nodes: ExplorerNode[]): ExplorerNode[] {

@@ -19,7 +19,7 @@ import {
 } from '../../app/components/ui/context-menu';
 import {
     collectAllIds,
-    getLastDescendantId,
+    getLastVisibleDescendantId,
     getNodeCompletionValue,
     isFolderNode,
     type ExplorerNode,
@@ -69,7 +69,9 @@ export function ExplorerTree({
             }
 
             const ids = collectAllIds(node);
-            const lastId = getLastDescendantId(node);
+            const lastId = getLastVisibleDescendantId(node, (id) =>
+                expandedIds.has(id),
+            );
             setHoverInfo({ ids: new Set(ids), rootId: node.id, lastId, type });
         },
         [],
