@@ -99,7 +99,9 @@ export function UpdateStatusCard({
                         {state.stage === 'error' && 'Update fehlgeschlagen'}
                     </div>
                     <div className="mt-0.5 text-xs text-neutral-400">
-                        {state.message ??
+                        {(state.stage === 'error'
+                            ? state.error || state.message
+                            : state.message) ??
                             (state.stage === 'downloaded'
                                 ? `Version ${state.latestVersion ?? 'neu'} wurde geladen.`
                                 : state.stage === 'available'

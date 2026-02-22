@@ -1,5 +1,6 @@
 appId: com.aryazos.study-desktop
 productName: Study Desktop
+artifactName: Study-Desktop-${version}-${arch}.${ext}
 directories:
     buildResources: build
 files:
