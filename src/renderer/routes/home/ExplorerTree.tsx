@@ -89,13 +89,13 @@ export function ExplorerTree({
                                 }
                             }}
                             className={cn(
-                                'flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-all mx-2 w-[calc(100%-16px)] outline-none focus-visible:ring-2 focus-visible:ring-white/50',
+                                'flex items-center gap-2 px-2 py-1.5 text-left text-sm transition-all mx-2 w-[calc(100%-16px)] outline-none focus-visible:ring-2 focus-visible:ring-white/50',
                                 selected
-                                    ? 'bg-white/10 text-white font-medium shadow-sm'
-                                    : 'text-neutral-300 hover:bg-white/5 hover:text-neutral-100',
+                                    ? 'bg-white/10 text-white font-medium shadow-sm rounded-lg'
+                                    : 'text-neutral-300 hover:bg-white/5 hover:text-neutral-100 rounded-lg',
                                 isHovered &&
                                     !selected &&
-                                    'bg-green-500/10 text-green-400/90',
+                                    'bg-green-500/10 text-green-400/90 rounded-none shadow-none',
                             )}
                             style={{ paddingLeft: `${depth * 14 + 8}px` }}
                         >
