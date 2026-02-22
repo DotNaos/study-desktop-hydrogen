@@ -113,7 +113,13 @@ export function ExplorerTree({
                         )}
                     />
                 )}
-                <ContextMenu>
+                <ContextMenu
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            handleActionHover(node, null);
+                        }
+                    }}
+                >
                     <ContextMenuTrigger asChild>
                         <button
                             type="button"
