@@ -15,7 +15,7 @@
     "openapi:export": "tsx scripts/export-openapi.ts",
     "download:chromium": "node scripts/download-chromium.mjs",
     "build:mac": "npm run download:chromium && node ./node_modules/electron-vite/bin/electron-vite.js build && electron-builder --mac --arm64 --publish never",
-    "build:win": "node ./node_modules/electron-vite/bin/electron-vite.js build && electron-builder --win --x64",
+    "build:win": "npm run download:chromium && node ./node_modules/electron-vite/bin/electron-vite.js build && electron-builder --win --x64",
     "build:linux": "node ./node_modules/electron-vite/bin/electron-vite.js build && electron-builder --linux",
     "install:mac": "npm run build:mac && open \"dist/$(ls dist | grep -E '\\.dmg$' | head -1)\""
   },
