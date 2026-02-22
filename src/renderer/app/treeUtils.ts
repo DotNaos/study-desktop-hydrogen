@@ -61,6 +61,14 @@ export function collectResourceIds(node: ExplorerNode): string[] {
     return result;
 }
 
+export function collectAllIds(node: ExplorerNode): string[] {
+    const result: string[] = [node.id];
+    for (const child of node.children ?? []) {
+        result.push(...collectAllIds(child));
+    }
+    return result;
+}
+
 export function flattenNodes(nodes: ExplorerNode[]): ExplorerNode[] {
     const result: ExplorerNode[] = [];
 
@@ -78,7 +86,9 @@ export function flattenNodes(nodes: ExplorerNode[]): ExplorerNode[] {
     return result;
 }
 
-export function buildInitialCompletionMap(nodes: ExplorerNode[]): Map<string, boolean> {
+export function buildInitialCompletionMap(
+    nodes: ExplorerNode[],
+): Map<string, boolean> {
     const map = new Map<string, boolean>();
     for (const node of flattenNodes(nodes)) {
         if (!isResourceNode(node)) {
@@ -94,4 +104,3 @@ export function buildInitialCompletionMap(nodes: ExplorerNode[]): Map<string, bo
     }
     return map;
 }
-

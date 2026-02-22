@@ -18,7 +18,7 @@ import {
     ContextMenuTrigger,
 } from '../../app/components/ui/context-menu';
 import {
-    collectResourceIds,
+    collectAllIds,
     getNodeCompletionValue,
     isFolderNode,
     type ExplorerNode,
@@ -57,7 +57,7 @@ export function ExplorerTree({
                 return;
             }
 
-            const ids = collectResourceIds(node);
+            const ids = collectAllIds(node);
             setHoveredIds(new Set(ids));
         },
         [],
@@ -95,7 +95,7 @@ export function ExplorerTree({
                                     : 'text-neutral-300 hover:bg-white/5 hover:text-neutral-100',
                                 isHovered &&
                                     !selected &&
-                                    'bg-green-500/10 text-green-400 ring-1 ring-green-500/30',
+                                    'bg-green-500/5 text-green-400/90 shadow-[inset_1px_0_0_0_rgba(34,197,94,0.4)]',
                             )}
                             style={{ paddingLeft: `${depth * 14 + 8}px` }}
                         >
