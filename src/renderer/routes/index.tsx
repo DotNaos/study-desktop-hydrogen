@@ -22,7 +22,6 @@ import {
     collectResourceIds,
     flattenNodes,
     getNodeCompletionValue,
-    isFolderNode,
     isResourceNode,
     type ExplorerNode,
 } from '../app/treeUtils';
@@ -1050,8 +1049,7 @@ function Home() {
 
             {exportNode && (
                 <ExportDialog
-                    nodeName={exportNode.name}
-                    isFolder={isFolderNode(exportNode)}
+                    node={exportNode}
                     goodnotesAvailable={goodnotesAvailable}
                     exportMode={exportMode}
                     exportError={exportError}

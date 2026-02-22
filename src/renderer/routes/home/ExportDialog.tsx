@@ -1,4 +1,13 @@
-import { ExternalLink, Loader2, Save, Share2 } from 'lucide-react';
+import {
+    ExternalLink,
+    FileIcon,
+    FolderIcon,
+    Loader2,
+    Save,
+    Share2,
+} from 'lucide-react';
+import type { ExplorerNode } from '../../app/treeUtils';
+import { isFolderNode } from '../../app/treeUtils';
 import type { ExportMode } from './types';
 
 function GoodnotesIcon(props: React.SVGProps<SVGSVGElement>) {
@@ -26,9 +35,46 @@ function GoodnotesIcon(props: React.SVGProps<SVGSVGElement>) {
     );
 }
 
+function PreviewTree({
+    node,
+    depth = 0,
+}: {
+    node: ExplorerNode;
+    depth?: number;
+}) {
+    const isFolder = isFolderNode(node);
+    return (
+        <div className="flex flex-col">
+            <div
+                className="flex items-center gap-2 py-1.5 px-2 hover:bg-neutral-800/50 rounded-md transition-colors"
+                style={{ paddingLeft: `${depth * 1.5 + 0.5}rem` }}
+            >
+                {isFolder ? (
+                    <FolderIcon className="w-4 h-4 text-blue-400 shrink-0" />
+                ) : (
+                    <FileIcon className="w-4 h-4 text-neutral-400 shrink-0" />
+                )}
+                <span className="text-sm font-medium text-neutral-200 truncate">
+                    {node.name}
+                </span>
+            </div>
+            {isFolder && node.children && (
+                <div className="flex flex-col">
+                    {node.children.map((child) => (
+                        <PreviewTree
+                            key={child.id}
+                            node={child}
+                            depth={depth + 1}
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 interface ExportDialogProps {
-    nodeName: string;
-    isFolder: boolean;
+    node: ExplorerNode;
     goodnotesAvailable: boolean;
     exportMode: ExportMode | null;
     exportError: string | null;
@@ -40,8 +86,7 @@ interface ExportDialogProps {
 }
 
 export function ExportDialog({
-    nodeName,
-    isFolder,
+    node,
     goodnotesAvailable,
     exportMode,
     exportError,
@@ -55,93 +100,94 @@ export function ExportDialog({
 
     return (
         <div className="fixed inset-0 z-50 bg-black/65 flex items-center justify-center px-4">
-            <div className="w-full max-w-lg rounded-xl border border-neutral-700 bg-neutral-900 p-5">
-                <h2 className="text-lg font-semibold">Exportieren</h2>
-                <p className="mt-1 text-sm text-neutral-400">{nodeName}</p>
-
-                {exportError && (
-                    <p className="mt-3 text-sm text-rose-400">{exportError}</p>
-                )}
-
-                <div className="mt-4 space-y-2">
-                    <button
-                        type="button"
-                        disabled={exportMode !== null}
-                        onClick={onSaveAs}
-                        className="w-full rounded-lg border border-neutral-700 px-3 py-2 text-sm text-left hover:bg-neutral-800 disabled:opacity-60"
-                    >
-                        <div className="font-medium flex items-center justify-between">
-                            <span className="flex items-center gap-2">
-                                <Save className="h-4 w-4" />
-                                Speichern unter
-                            </span>
-                            {exportMode === 'saveAs' && (
-                                <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />
-                            )}
-                        </div>
-                    </button>
-
-                    <button
-                        type="button"
-                        disabled={exportMode !== null}
-                        onClick={onShare}
-                        className="w-full rounded-lg border border-neutral-700 px-3 py-2 text-sm text-left hover:bg-neutral-800 disabled:opacity-60"
-                    >
-                        <div className="font-medium flex items-center justify-between">
-                            <span className="flex items-center gap-2">
-                                <Share2 className="h-4 w-4" />
-                                Teilen
-                            </span>
-                            {exportMode === 'share' && (
-                                <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />
-                            )}
-                        </div>
-                    </button>
-
-                    <button
-                        type="button"
-                        disabled={exportMode !== null}
-                        onClick={onOpenWith}
-                        className="w-full rounded-lg border border-neutral-700 px-3 py-2 text-sm text-left hover:bg-neutral-800 disabled:opacity-60"
-                    >
-                        <div className="font-medium flex items-center justify-between">
-                            <span className="flex items-center gap-2">
-                                <ExternalLink className="h-4 w-4" />
-                                Öffnen mit
-                            </span>
-                            {exportMode === 'openWith' && (
-                                <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />
-                            )}
-                        </div>
-                    </button>
-
-                    <button
-                        type="button"
-                        disabled={goodnotesDisabled}
-                        onClick={onOpenGoodnotes}
-                        className="w-full rounded-lg border border-neutral-700 px-3 py-2 text-sm text-left hover:bg-neutral-800 disabled:opacity-60"
-                    >
-                        <div className="font-medium flex items-center justify-between">
-                            <span className="flex items-center gap-2">
-                                <GoodnotesIcon className="h-4 w-4" />
-                                In GoodNotes öffnen
-                            </span>
-                            {exportMode === 'openGoodnotes' && (
-                                <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />
-                            )}
-                        </div>
-                    </button>
+            <div className="w-full max-w-3xl rounded-xl border border-neutral-700 bg-neutral-900 flex flex-col max-h-[85vh] overflow-hidden">
+                {/* Header */}
+                <div className="px-5 py-4 border-b border-neutral-700 shrink-0 flex justify-between items-center">
+                    <div>
+                        <h2 className="text-lg font-semibold text-white">
+                            Exportieren
+                        </h2>
+                        <p className="mt-0.5 text-sm text-neutral-400 truncate">
+                            {node.name}
+                        </p>
+                    </div>
                 </div>
 
-                <div className="mt-4 flex justify-end">
+                {exportError && (
+                    <div className="px-5 py-3 bg-red-500/10 border-b border-red-500/20 shrink-0">
+                        <p className="text-sm text-red-400">{exportError}</p>
+                    </div>
+                )}
+
+                {/* Body - Tree Preview */}
+                <div className="flex-1 overflow-y-auto px-3 py-3 relative bg-neutral-900/50">
+                    <PreviewTree node={node} />
+                </div>
+
+                {/* Footer - Actions */}
+                <div className="px-5 py-4 border-t border-neutral-700 shrink-0 bg-neutral-900 flex flex-wrap items-center justify-between gap-4">
                     <button
                         type="button"
                         disabled={exportMode !== null}
                         onClick={onClose}
-                        className="rounded-lg border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-800 disabled:opacity-60"
+                        className="rounded-lg px-4 py-2 text-sm text-neutral-300 hover:text-white hover:bg-neutral-800 disabled:opacity-60 transition-colors"
                     >
-                        Schließen
+                        Abbrechen
                     </button>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                            type="button"
+                            disabled={exportMode !== null}
+                            onClick={onSaveAs}
+                            className="rounded-lg border border-neutral-700 px-4 py-2 text-sm text-neutral-200 hover:bg-neutral-800 disabled:opacity-60 transition-colors flex items-center gap-2"
+                        >
+                            <Save className="h-4 w-4" />
+                            Speichern unter
+                            {exportMode === 'saveAs' && (
+                                <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />
+                            )}
+                        </button>
+
+                        <button
+                            type="button"
+                            disabled={exportMode !== null}
+                            onClick={onShare}
+                            className="rounded-lg border border-neutral-700 px-4 py-2 text-sm text-neutral-200 hover:bg-neutral-800 disabled:opacity-60 transition-colors flex items-center gap-2"
+                        >
+                            <Share2 className="h-4 w-4" />
+                            Teilen
+                            {exportMode === 'share' && (
+                                <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />
+                            )}
+                        </button>
+
+                        <button
+                            type="button"
+                            disabled={exportMode !== null}
+                            onClick={onOpenWith}
+                            className="rounded-lg border border-neutral-700 px-4 py-2 text-sm text-neutral-200 hover:bg-neutral-800 disabled:opacity-60 transition-colors flex items-center gap-2"
+                        >
+                            <ExternalLink className="h-4 w-4" />
+                            Öffnen mit
+                            {exportMode === 'openWith' && (
+                                <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />
+                            )}
+                        </button>
+
+                        <button
+                            type="button"
+                            disabled={goodnotesDisabled}
+                            onClick={onOpenGoodnotes}
+                            className="rounded-lg px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 bg-[#48BEDB]/10 text-[#48BEDB] border border-[#48BEDB]/30 hover:bg-[#48BEDB]/20 disabled:opacity-60"
+                        >
+                            <GoodnotesIcon className="h-4 w-4" />
+                            In GoodNotes öffnen
+                            {exportMode === 'openGoodnotes' && (
+                                <Loader2 className="h-4 w-4 animate-spin text-[#48BEDB]" />
+                            )}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
