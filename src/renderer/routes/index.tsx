@@ -572,6 +572,9 @@ function Home() {
                         'success',
                     );
                 } else if (mode === 'share') {
+                    if (isFolderNode(exportNode)) {
+                        throw new Error('SHARE_RESOURCE_ONLY');
+                    }
                     const result = await window.studySync?.exportShare?.(
                         exportNode.id,
                     );
@@ -586,6 +589,9 @@ function Home() {
                         'success',
                     );
                 } else if (mode === 'openWith') {
+                    if (isFolderNode(exportNode)) {
+                        throw new Error('OPEN_WITH_RESOURCE_ONLY');
+                    }
                     const result = await window.studySync?.exportOpenWith?.(
                         exportNode.id,
                     );
@@ -605,9 +611,10 @@ function Home() {
                         `Export geöffnet: ${result.fileCount ?? 0} Datei(en)`,
                         'success',
                     );
-                } else if (isFolderNode(exportNode)) {
-                    throw new Error('GOODNOTES_RESOURCE_ONLY');
-                } else {
+                } else if (mode === 'openGoodnotes') {
+                    if (isFolderNode(exportNode)) {
+                        throw new Error('GOODNOTES_RESOURCE_ONLY');
+                    }
                     const result =
                         await window.studySync?.exportOpenGoodnotes?.(
                             exportNode.id,
@@ -635,9 +642,13 @@ function Home() {
                 const message =
                     rawMessage === 'GOODNOTES_RESOURCE_ONLY'
                         ? 'Goodnotes ist nur für einzelne PDF-Ressourcen verfügbar.'
-                        : rawMessage === 'GOODNOTES_NOT_INSTALLED'
-                          ? 'Goodnotes ist nicht installiert.'
-                          : rawMessage;
+                        : rawMessage === 'OPEN_WITH_RESOURCE_ONLY'
+                          ? '"Öffnen mit" ist nur für einzelne Ressourcen verfügbar.'
+                          : rawMessage === 'SHARE_RESOURCE_ONLY'
+                            ? '"Teilen" ist nur für einzelne Ressourcen verfügbar.'
+                            : rawMessage === 'GOODNOTES_NOT_INSTALLED'
+                              ? 'Goodnotes ist nicht installiert.'
+                              : rawMessage;
                 setExportError(message);
                 pushToast(message, 'error');
             } finally {
