@@ -5,9 +5,11 @@ import {
     FileText,
     Folder,
     Loader2,
+    MinusCircle,
     Upload,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useCallback, useState } from 'react';
 import {
     ContextMenu,
     ContextMenuContent,
@@ -16,6 +18,7 @@ import {
     ContextMenuTrigger,
 } from '../../app/components/ui/context-menu';
 import {
+    collectResourceIds,
     getNodeCompletionValue,
     isFolderNode,
     type ExplorerNode,
@@ -45,6 +48,21 @@ export function ExplorerTree({
     onPersistCompletion,
     onOpenExportDialog,
 }: ExplorerTreeProps) {
+    const [hoveredIds, setHoveredIds] = useState<Set<string>>(new Set());
+
+    const handleActionHover = useCallback(
+        (node: ExplorerNode, active: boolean) => {
+            if (!active) {
+                setHoveredIds(new Set());
+                return;
+            }
+
+            const ids = collectResourceIds(node);
+            setHoveredIds(new Set(ids));
+        },
+        [],
+    );
+
     const renderNode = (node: ExplorerNode, depth: number): ReactNode => {
         const folder = isFolderNode(node);
         const completed = getNodeCompletionValue(node, completionMap);
@@ -52,13 +70,10 @@ export function ExplorerTree({
         const expanded = expandedIds.has(node.id);
         const hasChildren = (node.children?.length ?? 0) > 0;
         const isBusy = completionBusyId === node.id;
+        const isHovered = hoveredIds.has(node.id);
 
-        const markCompletedLabel = folder
-            ? 'Alle Ressourcen als erledigt markieren'
-            : 'Als erledigt markieren';
-        const markUncompletedLabel = folder
-            ? 'Alle Ressourcen als unerledigt markieren'
-            : 'Als unerledigt markieren';
+        const markCompletedLabel = folder ? 'Alle erledigt' : 'Erledigt';
+        const markUncompletedLabel = folder ? 'Alles unerledigt' : 'Unerledigt';
 
         return (
             <div key={node.id}>
@@ -74,10 +89,13 @@ export function ExplorerTree({
                                 }
                             }}
                             className={cn(
-                                'flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors mx-2 w-[calc(100%-16px)] outline-none focus-visible:ring-2 focus-visible:ring-white/50',
+                                'flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-all mx-2 w-[calc(100%-16px)] outline-none focus-visible:ring-2 focus-visible:ring-white/50',
                                 selected
                                     ? 'bg-white/10 text-white font-medium shadow-sm'
                                     : 'text-neutral-300 hover:bg-white/5 hover:text-neutral-100',
+                                isHovered &&
+                                    !selected &&
+                                    'bg-green-500/10 text-green-400 ring-1 ring-green-500/30',
                             )}
                             style={{ paddingLeft: `${depth * 14 + 8}px` }}
                         >
@@ -130,17 +148,21 @@ export function ExplorerTree({
                         <ContextMenuItem
                             disabled={completed}
                             onClick={() => onPersistCompletion(node, true)}
-                            className="focus:bg-neutral-800 focus:text-white"
+                            onMouseEnter={() => handleActionHover(node, true)}
+                            onMouseLeave={() => handleActionHover(node, false)}
+                            className="focus:bg-green-500/10 focus:text-green-400 cursor-pointer"
                         >
-                            <Check className="mr-2 h-4 w-4" />
+                            <Check className="mr-2 h-4 w-4 text-green-500" />
                             {markCompletedLabel}
                         </ContextMenuItem>
                         <ContextMenuItem
                             disabled={!completed}
                             onClick={() => onPersistCompletion(node, false)}
-                            className="focus:bg-neutral-800 focus:text-white"
+                            onMouseEnter={() => handleActionHover(node, true)}
+                            onMouseLeave={() => handleActionHover(node, false)}
+                            className="focus:bg-red-500/10 focus:text-red-400 cursor-pointer"
                         >
-                            <Check className="mr-2 h-4 w-4" />
+                            <MinusCircle className="mr-2 h-4 w-4 text-red-500" />
                             {markUncompletedLabel}
                         </ContextMenuItem>
                         <ContextMenuSeparator className="bg-neutral-700" />
