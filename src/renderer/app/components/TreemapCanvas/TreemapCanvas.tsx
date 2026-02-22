@@ -1,4 +1,4 @@
-import { Check, Home, Layers } from 'lucide-react';
+import { Check, Home, Layers, X } from 'lucide-react';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '../../../shared/lib/utils';
 import type { Node } from '../../zoomData';
@@ -252,6 +252,10 @@ export function TreemapCanvas({
     const suppressZoomOutUntilRef = useRef(0);
     const [depthLevel, setDepthLevel] = useState(1); // 0, 1, 2, or 10 for "All"
     const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+    const [hoveredAction, setHoveredAction] = useState<{
+        id: string;
+        action: 'complete' | 'uncomplete';
+    } | null>(null);
 
     // Cycle through depth levels: 0 → 1 → 2 → All(10) → 0
     const cycleDepth = () => {
@@ -523,15 +527,38 @@ export function TreemapCanvas({
                             outerRadius - padding * 0.5,
                         );
 
+                        const isHoveredForComplete =
+                            hoveredAction?.action === 'complete' &&
+                            (hoveredAction.id === item.id ||
+                                ancestors.some(
+                                    (a) => a.id === hoveredAction.id,
+                                ));
+                        const isHoveredForUncomplete =
+                            hoveredAction?.action === 'uncomplete' &&
+                            (hoveredAction.id === item.id ||
+                                ancestors.some(
+                                    (a) => a.id === hoveredAction.id,
+                                ));
+
                         const cellContent = (
                             <div className="flex flex-col">
                                 {/* Square cell */}
                                 <div
                                     className={cn(
                                         'rounded-xl border overflow-hidden cursor-pointer transition-all duration-200 relative',
-                                        'bg-neutral-900/60 border-neutral-700/30 hover:border-neutral-500/50',
+                                        'bg-neutral-900/60 border-neutral-700/30',
+                                        !isHoveredForComplete &&
+                                            !isHoveredForUncomplete &&
+                                            'hover:border-neutral-500/50',
                                         isComplete &&
+                                            !isHoveredForComplete &&
+                                            !isHoveredForUncomplete &&
                                             'border-green-500/50 shadow-[0_0_12px_rgba(34,197,94,0.2)]',
+                                        // Hover feedback
+                                        isHoveredForComplete &&
+                                            'border-green-500/80 shadow-[0_0_16px_rgba(34,197,94,0.4)] bg-green-500/10',
+                                        isHoveredForUncomplete &&
+                                            'border-rose-500/80 shadow-[0_0_16px_rgba(244,63,94,0.4)] bg-rose-500/10',
                                     )}
                                     style={{
                                         width: cellSize,
@@ -590,26 +617,44 @@ export function TreemapCanvas({
                                         onClick={() => {
                                             suppressNextZoomOut();
                                             onToggleCompletion?.(item, true);
+                                            setHoveredAction(null);
                                         }}
-                                        className="text-neutral-200 focus:bg-neutral-800 focus:text-white"
+                                        onMouseEnter={() =>
+                                            setHoveredAction({
+                                                id: item.id,
+                                                action: 'complete',
+                                            })
+                                        }
+                                        onMouseLeave={() =>
+                                            setHoveredAction(null)
+                                        }
+                                        className="text-neutral-200 focus:bg-neutral-800 focus:text-green-400 focus:bg-green-500/10"
                                     >
-                                        <Check className="w-4 h-4 mr-2 text-green-500" />
-                                        {isLeaf
-                                            ? 'Als erledigt markieren'
-                                            : 'Alle Ressourcen als erledigt markieren'}
+                                        <Check className="w-4 h-4 mr-2" />
+                                        {isLeaf ? 'Erledigt' : 'Alle erledigt'}
                                     </ContextMenuItem>
                                     <ContextMenuItem
                                         disabled={!onToggleCompletion}
                                         onClick={() => {
                                             suppressNextZoomOut();
                                             onToggleCompletion?.(item, false);
+                                            setHoveredAction(null);
                                         }}
-                                        className="text-neutral-200 focus:bg-neutral-800 focus:text-white"
+                                        onMouseEnter={() =>
+                                            setHoveredAction({
+                                                id: item.id,
+                                                action: 'uncomplete',
+                                            })
+                                        }
+                                        onMouseLeave={() =>
+                                            setHoveredAction(null)
+                                        }
+                                        className="text-neutral-200 focus:bg-neutral-800 focus:text-rose-400 focus:bg-rose-500/10"
                                     >
-                                        <Check className="w-4 h-4 mr-2 text-neutral-500" />
+                                        <X className="w-4 h-4 mr-2" />
                                         {isLeaf
-                                            ? 'Als unerledigt markieren'
-                                            : 'Alle Ressourcen als unerledigt markieren'}
+                                            ? 'Unerledigt'
+                                            : 'Alle unerledigt'}
                                     </ContextMenuItem>
                                     <ContextMenuItem
                                         disabled={!onExport}
