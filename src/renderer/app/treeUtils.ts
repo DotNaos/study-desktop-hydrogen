@@ -69,6 +69,13 @@ export function collectAllIds(node: ExplorerNode): string[] {
     return result;
 }
 
+export function getLastDescendantId(node: ExplorerNode): string {
+    if (!node.children || node.children.length === 0) {
+        return node.id;
+    }
+    return getLastDescendantId(node.children[node.children.length - 1]);
+}
+
 export function flattenNodes(nodes: ExplorerNode[]): ExplorerNode[] {
     const result: ExplorerNode[] = [];
 

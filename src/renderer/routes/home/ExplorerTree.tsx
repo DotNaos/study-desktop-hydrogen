@@ -19,6 +19,7 @@ import {
 } from '../../app/components/ui/context-menu';
 import {
     collectAllIds,
+    getLastDescendantId,
     getNodeCompletionValue,
     isFolderNode,
     type ExplorerNode,
@@ -50,18 +51,26 @@ export function ExplorerTree({
 }: ExplorerTreeProps) {
     const [hoverInfo, setHoverInfo] = useState<{
         ids: Set<string>;
+        rootId: string | null;
+        lastId: string | null;
         type: 'done' | 'unmark' | null;
-    }>({ ids: new Set(), type: null });
+    }>({ ids: new Set(), rootId: null, lastId: null, type: null });
 
     const handleActionHover = useCallback(
         (node: ExplorerNode, type: 'done' | 'unmark' | null) => {
             if (!type) {
-                setHoverInfo({ ids: new Set(), type: null });
+                setHoverInfo({
+                    ids: new Set(),
+                    rootId: null,
+                    lastId: null,
+                    type: null,
+                });
                 return;
             }
 
             const ids = collectAllIds(node);
-            setHoverInfo({ ids: new Set(ids), type });
+            const lastId = getLastDescendantId(node);
+            setHoverInfo({ ids: new Set(ids), rootId: node.id, lastId, type });
         },
         [],
     );
@@ -74,6 +83,16 @@ export function ExplorerTree({
         const hasChildren = (node.children?.length ?? 0) > 0;
         const isBusy = completionBusyId === node.id;
         const isHovered = hoverInfo.ids.has(node.id);
+        const isHoverRoot = hoverInfo.rootId === node.id;
+        const isHoverLast = hoverInfo.lastId === node.id;
+
+        const iconColorClass = isHovered
+            ? hoverInfo.type === 'done'
+                ? 'text-green-500'
+                : 'text-red-500'
+            : completed
+              ? 'text-success'
+              : 'text-neutral-500';
 
         const markCompletedLabel = folder ? 'Alle erledigt' : 'Erledigt';
         const markUncompletedLabel = folder
@@ -101,7 +120,12 @@ export function ExplorerTree({
                                 isHovered &&
                                     !selected &&
                                     cn(
-                                        'rounded-none shadow-none',
+                                        'shadow-none',
+                                        isHoverRoot && 'rounded-t-lg',
+                                        isHoverLast && 'rounded-b-lg',
+                                        !isHoverRoot &&
+                                            !isHoverLast &&
+                                            'rounded-none',
                                         hoverInfo.type === 'done'
                                             ? 'bg-green-500/10 text-green-400/90'
                                             : 'bg-red-500/10 text-red-400/90',
@@ -127,18 +151,14 @@ export function ExplorerTree({
                                 <Folder
                                     className={cn(
                                         'h-4 w-4 shrink-0',
-                                        completed
-                                            ? 'text-success'
-                                            : 'text-neutral-500',
+                                        iconColorClass,
                                     )}
                                 />
                             ) : (
                                 <FileText
                                     className={cn(
                                         'h-4 w-4 shrink-0',
-                                        completed
-                                            ? 'text-success'
-                                            : 'text-neutral-500',
+                                        iconColorClass,
                                     )}
                                 />
                             )}
@@ -147,8 +167,13 @@ export function ExplorerTree({
 
                             {isBusy ? (
                                 <Loader2 className="h-3.5 w-3.5 animate-spin text-neutral-500 shrink-0" />
-                            ) : completed ? (
-                                <Check className="h-3.5 w-3.5 text-success shrink-0" />
+                            ) : completed ||
+                              (isHovered && hoverInfo.type === 'unmark') ? (
+                                isHovered && hoverInfo.type === 'unmark' ? (
+                                    <X className="h-3.5 w-3.5 text-red-500 shrink-0" />
+                                ) : (
+                                    <Check className="h-3.5 w-3.5 text-success shrink-0" />
+                                )
                             ) : null}
 
                             <div className="flex-1" />
