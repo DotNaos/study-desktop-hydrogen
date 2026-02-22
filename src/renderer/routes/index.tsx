@@ -1,4 +1,4 @@
-import { Dropdown } from '@heroui/react';
+import { Dropdown, Label, Radio, RadioGroup, Switch } from '@heroui/react';
 import { createFileRoute } from '@tanstack/react-router';
 import {
     ArrowDown,
@@ -12,11 +12,11 @@ import {
     List,
     Loader2,
     LogOut,
+    SlidersHorizontal,
 } from 'lucide-react';
-import type { FormEvent } from 'react';
+import type { FormEvent, PointerEvent as ReactPointerEvent } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { TreemapCanvas } from '../app/components/TreemapCanvas';
-import { Checkbox } from '../app/components/ui/checkbox';
 import {
     buildInitialCompletionMap,
     collectResourceIds,
@@ -44,12 +44,58 @@ export const Route = createFileRoute('/')({
     component: Home,
 });
 
+type CompletionSort = 'none' | 'completed-first' | 'completed-last';
+
+const EXPLORER_VIEW_SETTINGS_STORAGE_KEY =
+    'study-desktop-explorer-view-settings';
+
+function isCompletionSort(value: unknown): value is CompletionSort {
+    return (
+        value === 'none' ||
+        value === 'completed-first' ||
+        value === 'completed-last'
+    );
+}
+
+function readStoredExplorerViewSettings(): {
+    hideCompleted: boolean;
+    completionSort: CompletionSort;
+} {
+    if (typeof window === 'undefined') {
+        return { hideCompleted: false, completionSort: 'none' };
+    }
+
+    try {
+        const raw = localStorage.getItem(EXPLORER_VIEW_SETTINGS_STORAGE_KEY);
+        if (!raw) {
+            return { hideCompleted: false, completionSort: 'none' };
+        }
+
+        const parsed = JSON.parse(raw) as {
+            hideCompleted?: unknown;
+            completionSort?: unknown;
+        };
+
+        return {
+            hideCompleted: parsed.hideCompleted === true,
+            completionSort: isCompletionSort(parsed.completionSort)
+                ? parsed.completionSort
+                : 'none',
+        };
+    } catch (error) {
+        console.error('Failed to restore explorer view settings', error);
+        return { hideCompleted: false, completionSort: 'none' };
+    }
+}
+
 function Home() {
     const [viewMode, setViewMode] = useState<ViewMode>('list');
-    const [hideCompleted, setHideCompleted] = useState(false);
-    const [completionSort, setCompletionSort] = useState<
-        'none' | 'completed-first' | 'completed-last'
-    >('none');
+    const [hideCompleted, setHideCompleted] = useState(
+        () => readStoredExplorerViewSettings().hideCompleted,
+    );
+    const [completionSort, setCompletionSort] = useState<CompletionSort>(
+        () => readStoredExplorerViewSettings().completionSort,
+    );
     const [apiBase, setApiBase] = useState<string>('');
     const [authStatus, setAuthStatus] = useState<AuthStatusResponse | null>(
         null,
@@ -82,6 +128,17 @@ function Home() {
     const [goodnotesAvailable, setGoodnotesAvailable] = useState(false);
     const [toasts, setToasts] = useState<ToastItem[]>([]);
     const toastTimeoutsRef = useRef<number[]>([]);
+    const explorerHoverPreviewCloseTimeoutRef = useRef<number | null>(null);
+    const [isExplorerHoverPreviewOpen, setIsExplorerHoverPreviewOpen] =
+        useState(false);
+    const [explorerHoverPreviewWidthPx, setExplorerHoverPreviewWidthPx] =
+        useState(520);
+    const explorerHoverPreviewResizeSessionRef = useRef<{
+        pointerId: number;
+        startX: number;
+        startWidth: number;
+    } | null>(null);
+    const isExplorerHoverPreviewResizingRef = useRef(false);
 
     const nodeMap = useMemo(() => {
         return new Map(flattenNodes(roots).map((node) => [node.id, node]));
@@ -210,6 +267,22 @@ function Home() {
         hasViewerContent,
         selectedResourceId,
     });
+    const canShowExplorerHoverPreview =
+        hasViewerContent && panelMode === 'viewer-only';
+    const showExplorerHoverPreview =
+        canShowExplorerHoverPreview && isExplorerHoverPreviewOpen;
+
+    const clampExplorerHoverPreviewWidth = useCallback(
+        (nextWidth: number) => {
+            const containerWidth =
+                splitContainerRef.current?.getBoundingClientRect().width ??
+                window.innerWidth;
+            const minWidth = 360;
+            const maxWidth = Math.max(minWidth, Math.min(920, containerWidth - 32));
+            return Math.round(Math.min(maxWidth, Math.max(minWidth, nextWidth)));
+        },
+        [splitContainerRef],
+    );
 
     const openResource = useCallback(
         (resourceId: string) => {
@@ -222,6 +295,70 @@ function Home() {
     const dismissToast = useCallback((id: string) => {
         setToasts((prev) => prev.filter((toast) => toast.id !== id));
     }, []);
+
+    const clearExplorerHoverPreviewCloseTimeout = useCallback(() => {
+        if (explorerHoverPreviewCloseTimeoutRef.current !== null) {
+            window.clearTimeout(explorerHoverPreviewCloseTimeoutRef.current);
+            explorerHoverPreviewCloseTimeoutRef.current = null;
+        }
+    }, []);
+
+    const openExplorerHoverPreview = useCallback(() => {
+        if (!canShowExplorerHoverPreview) {
+            return;
+        }
+        clearExplorerHoverPreviewCloseTimeout();
+        setIsExplorerHoverPreviewOpen(true);
+    }, [canShowExplorerHoverPreview, clearExplorerHoverPreviewCloseTimeout]);
+
+    const scheduleExplorerHoverPreviewClose = useCallback(() => {
+        if (!canShowExplorerHoverPreview) {
+            return;
+        }
+        if (isExplorerHoverPreviewResizingRef.current) {
+            return;
+        }
+        clearExplorerHoverPreviewCloseTimeout();
+        explorerHoverPreviewCloseTimeoutRef.current = window.setTimeout(() => {
+            setIsExplorerHoverPreviewOpen(false);
+            explorerHoverPreviewCloseTimeoutRef.current = null;
+        }, 140);
+    }, [canShowExplorerHoverPreview, clearExplorerHoverPreviewCloseTimeout]);
+
+    const stopExplorerHoverPreviewResize = useCallback(() => {
+        if (!explorerHoverPreviewResizeSessionRef.current) {
+            return;
+        }
+        explorerHoverPreviewResizeSessionRef.current = null;
+        isExplorerHoverPreviewResizingRef.current = false;
+        document.body.style.userSelect = '';
+        document.body.style.cursor = '';
+    }, []);
+
+    const onExplorerHoverPreviewResizeStart = useCallback(
+        (event: ReactPointerEvent<HTMLButtonElement>) => {
+            if (event.button !== 0 || !canShowExplorerHoverPreview) {
+                return;
+            }
+            event.preventDefault();
+            event.stopPropagation();
+            clearExplorerHoverPreviewCloseTimeout();
+            setIsExplorerHoverPreviewOpen(true);
+            explorerHoverPreviewResizeSessionRef.current = {
+                pointerId: event.pointerId,
+                startX: event.clientX,
+                startWidth: explorerHoverPreviewWidthPx,
+            };
+            isExplorerHoverPreviewResizingRef.current = true;
+            document.body.style.userSelect = 'none';
+            document.body.style.cursor = 'ew-resize';
+        },
+        [
+            canShowExplorerHoverPreview,
+            clearExplorerHoverPreviewCloseTimeout,
+            explorerHoverPreviewWidthPx,
+        ],
+    );
 
     const pushToast = useCallback(
         (message: string, tone: ToastItem['tone']) => {
@@ -240,8 +377,71 @@ function Home() {
             for (const timeoutId of toastTimeoutsRef.current) {
                 window.clearTimeout(timeoutId);
             }
+            clearExplorerHoverPreviewCloseTimeout();
+            stopExplorerHoverPreviewResize();
         };
-    }, []);
+    }, [clearExplorerHoverPreviewCloseTimeout, stopExplorerHoverPreviewResize]);
+
+    useEffect(() => {
+        if (canShowExplorerHoverPreview) {
+            return;
+        }
+        clearExplorerHoverPreviewCloseTimeout();
+        setIsExplorerHoverPreviewOpen(false);
+        stopExplorerHoverPreviewResize();
+    }, [
+        canShowExplorerHoverPreview,
+        clearExplorerHoverPreviewCloseTimeout,
+        stopExplorerHoverPreviewResize,
+    ]);
+
+    useEffect(() => {
+        const onPointerMove = (event: PointerEvent) => {
+            const session = explorerHoverPreviewResizeSessionRef.current;
+            if (!session) {
+                return;
+            }
+            if (event.pointerId !== session.pointerId) {
+                return;
+            }
+
+            const deltaX = event.clientX - session.startX;
+            setExplorerHoverPreviewWidthPx(
+                clampExplorerHoverPreviewWidth(session.startWidth + deltaX),
+            );
+        };
+
+        const onPointerUp = (event: PointerEvent) => {
+            const session = explorerHoverPreviewResizeSessionRef.current;
+            if (!session || event.pointerId !== session.pointerId) {
+                return;
+            }
+            stopExplorerHoverPreviewResize();
+        };
+
+        const onPointerCancel = (event: PointerEvent) => {
+            const session = explorerHoverPreviewResizeSessionRef.current;
+            if (!session || event.pointerId !== session.pointerId) {
+                return;
+            }
+            stopExplorerHoverPreviewResize();
+        };
+
+        const onBlur = () => {
+            stopExplorerHoverPreviewResize();
+        };
+
+        window.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('pointerup', onPointerUp);
+        window.addEventListener('pointercancel', onPointerCancel);
+        window.addEventListener('blur', onBlur);
+        return () => {
+            window.removeEventListener('pointermove', onPointerMove);
+            window.removeEventListener('pointerup', onPointerUp);
+            window.removeEventListener('pointercancel', onPointerCancel);
+            window.removeEventListener('blur', onBlur);
+        };
+    }, [clampExplorerHoverPreviewWidth, stopExplorerHoverPreviewResize]);
 
     const loadTree = useCallback(async () => {
         if (!apiBase) {
@@ -347,6 +547,20 @@ function Home() {
         };
         void loadGoodnotesAvailability();
     }, []);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem(
+                EXPLORER_VIEW_SETTINGS_STORAGE_KEY,
+                JSON.stringify({
+                    hideCompleted,
+                    completionSort,
+                }),
+            );
+        } catch (error) {
+            console.error('Failed to save explorer view settings', error);
+        }
+    }, [hideCompleted, completionSort]);
 
     useEffect(() => {
         if (!apiBase) {
@@ -656,14 +870,29 @@ function Home() {
     );
 
     const completionSortOptions: Array<{
-        value: 'none' | 'completed-first' | 'completed-last';
+        value: CompletionSort;
         label: string;
         icon: typeof ArrowUpDown;
     }> = [
-        { value: 'none', label: 'Neutral', icon: ArrowUpDown },
-        { value: 'completed-last', label: 'Done last', icon: ArrowDown },
-        { value: 'completed-first', label: 'Done first', icon: ArrowUp },
+        {
+            value: 'none',
+            label: 'Neutral',
+            icon: ArrowUpDown,
+        },
+        {
+            value: 'completed-last',
+            label: 'Done last',
+            icon: ArrowDown,
+        },
+        {
+            value: 'completed-first',
+            label: 'Done first',
+            icon: ArrowUp,
+        },
     ];
+    const activeCompletionSortOption =
+        completionSortOptions.find((option) => option.value === completionSort) ??
+        completionSortOptions[0];
 
     if (authLoading || !apiBase) {
         return (
@@ -694,36 +923,112 @@ function Home() {
     }
 
     return (
-        <div className="h-screen flex bg-black text-neutral-100">
+        <div className="flex h-dvh max-h-dvh w-dvw max-w-dvw overflow-hidden bg-black text-neutral-100">
             {/* ── Sidenav – vertical tabs ──────────────────────────────── */}
             <nav className="w-16 shrink-0 flex flex-col border-r border-neutral-800 bg-black">
                 {/* spacer top */}
                 <div className="flex-1" />
 
                 {/* View-mode tabs */}
-                {(
-                    [
-                        { key: 'list', Icon: List, label: 'Liste' },
-                        { key: 'grid', Icon: LayoutGrid, label: 'Grid' },
-                    ] as const
-                ).map(({ key, Icon, label }) => (
-                    <button
-                        key={key}
-                        onClick={() => setViewMode(key)}
-                        title={label}
-                        className={cn(
-                            'relative flex flex-col items-center justify-center gap-1 py-3 w-full text-[10px] font-medium transition-all select-none',
-                            viewMode === key
-                                ? 'text-neutral-100 before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-blue-400'
-                                : 'text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800/40',
-                        )}
-                    >
-                        <Icon className="h-4 w-4" />
-                        {label}
-                    </button>
-                ))}
+                <div
+                    onPointerEnter={openExplorerHoverPreview}
+                    onPointerLeave={scheduleExplorerHoverPreviewClose}
+                >
+                    {(
+                        [
+                            { key: 'list', Icon: List, label: 'Liste' },
+                            { key: 'grid', Icon: LayoutGrid, label: 'Grid' },
+                        ] as const
+                    ).map(({ key, Icon, label }) => (
+                        <button
+                            key={key}
+                            onClick={() => setViewMode(key)}
+                            title={label}
+                            className={cn(
+                                'relative flex flex-col items-center justify-center gap-1 py-3 w-full text-[10px] font-medium transition-all select-none',
+                                viewMode === key
+                                    ? 'text-neutral-100 before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-blue-400'
+                                    : 'text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800/40',
+                            )}
+                        >
+                            <Icon className="h-4 w-4" />
+                            {label}
+                        </button>
+                    ))}
+                </div>
 
                 <div className="flex-1" />
+
+                {/* Filter / sort menu */}
+                <Dropdown>
+                    <Dropdown.Trigger>
+                        <button
+                            title={`Filter & Sortierung • ${activeCompletionSortOption.label}${hideCompleted ? ' • Hide done' : ''}`}
+                            className="flex flex-col items-center justify-center gap-1 py-3 w-full text-[10px] font-medium text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800/40 transition-all select-none"
+                        >
+                            <SlidersHorizontal className="h-4 w-4" />
+                            Filter
+                        </button>
+                    </Dropdown.Trigger>
+                    <Dropdown.Popover
+                        placement="top start"
+                        className="min-w-[340px]"
+                    >
+                        <div className="rounded-2xl border border-neutral-800/90 bg-neutral-950/95 p-2.5 shadow-2xl backdrop-blur-md">
+                            <Switch
+                                isSelected={hideCompleted}
+                                onChange={setHideCompleted}
+                                className="flex w-full items-center justify-between gap-3 rounded-xl px-2.5 py-2 hover:bg-neutral-900/50"
+                            >
+                                <Switch.Content className="flex-1">
+                                    <Label className="text-sm text-neutral-100">
+                                        Hide done
+                                    </Label>
+                                </Switch.Content>
+                                <Switch.Control className="shrink-0">
+                                    <Switch.Thumb />
+                                </Switch.Control>
+                            </Switch>
+
+                            <div className="my-1.5 h-px bg-neutral-800" />
+
+                            <RadioGroup
+                                name="completion-sort"
+                                value={completionSort}
+                                onChange={(value) =>
+                                    setCompletionSort(
+                                        value as
+                                            CompletionSort,
+                                    )
+                                }
+                                className="gap-1"
+                            >
+                                {completionSortOptions.map((option) => {
+                                    const Icon = option.icon;
+                                    return (
+                                        <Radio
+                                            key={option.value}
+                                            value={option.value}
+                                            className="my-0 rounded-xl border border-transparent px-2.5 py-2 hover:bg-neutral-900/50 data-[selected=true]:bg-neutral-900/70"
+                                        >
+                                            <Radio.Control className="mt-0.5">
+                                                <Radio.Indicator />
+                                            </Radio.Control>
+                                            <Radio.Content className="flex-1">
+                                                <div className="flex items-center gap-2">
+                                                    <Icon className="h-4 w-4 text-neutral-400" />
+                                                    <Label className="text-sm text-neutral-100">
+                                                        {option.label}
+                                                    </Label>
+                                                </div>
+                                            </Radio.Content>
+                                        </Radio>
+                                    );
+                                })}
+                            </RadioGroup>
+                        </div>
+                    </Dropdown.Popover>
+                </Dropdown>
 
                 {/* Logout */}
                 <button
@@ -737,22 +1042,48 @@ function Home() {
             </nav>
 
             {/* ── Main content ─────────────────────────────────────────── */}
-            <main className="flex-1 min-h-0 min-w-0 flex flex-col">
+            <main className="flex-1 min-h-0 min-w-0 overflow-hidden flex flex-col">
                 <div
                     ref={splitContainerRef}
-                    className="flex-1 min-h-0 w-full flex min-w-0"
+                    className="relative flex-1 min-h-0 w-full flex min-w-0"
                 >
                     {/* ── Explorer panel ──────────────────────────────── */}
                     <section
-                        style={{ width: `${explorerWidthPct}%` }}
+                        style={
+                            canShowExplorerHoverPreview
+                                ? {
+                                      width: `${clampExplorerHoverPreviewWidth(explorerHoverPreviewWidthPx)}px`,
+                                  }
+                                : { width: `${explorerWidthPct}%` }
+                        }
+                        onPointerEnter={
+                            canShowExplorerHoverPreview
+                                ? openExplorerHoverPreview
+                                : undefined
+                        }
+                        onPointerLeave={
+                            canShowExplorerHoverPreview
+                                ? scheduleExplorerHoverPreviewClose
+                                : undefined
+                        }
                         className={cn(
-                            'h-full min-w-0 flex flex-col overflow-hidden',
+                            'min-w-0 flex flex-col overflow-hidden',
+                            !canShowExplorerHoverPreview && 'h-full',
+                            canShowExplorerHoverPreview &&
+                                'absolute left-3 top-3 bottom-3 z-20 rounded-2xl border border-neutral-700/80 bg-neutral-950/95 backdrop-blur-xl shadow-[0_18px_50px_rgba(0,0,0,0.45)] transition-[transform,opacity] duration-200 ease-out',
+                            canShowExplorerHoverPreview &&
+                                (showExplorerHoverPreview
+                                    ? 'translate-x-0 opacity-100 pointer-events-auto'
+                                    : '-translate-x-3 opacity-0 pointer-events-none'),
                             shouldAnimatePanels &&
+                                !canShowExplorerHoverPreview &&
                                 'transition-[width] duration-220 ease-out',
                             hasViewerContent &&
                                 explorerWidthPct > 0 &&
                                 'border-r border-neutral-800',
-                            explorerWidthPct <= 0.01 && 'pointer-events-none',
+                            explorerWidthPct <= 0.01 &&
+                                !canShowExplorerHoverPreview &&
+                                'pointer-events-none',
                         )}
                     >
                         {/* Explorer toolbar */}
@@ -761,74 +1092,6 @@ function Home() {
                                 Explorer
                             </div>
                             <div className="flex items-center gap-1.5">
-                                {/* Hide completed */}
-                                <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                                    <Checkbox
-                                        id="hide-completed"
-                                        checked={hideCompleted}
-                                        onCheckedChange={(v) =>
-                                            setHideCompleted(v === true)
-                                        }
-                                        className="h-3.5 w-3.5"
-                                    />
-                                    <span className="text-xs text-neutral-400">
-                                        Hide done
-                                    </span>
-                                </label>
-
-                                {/* Sort dropdown */}
-                                <Dropdown>
-                                    <Dropdown.Trigger>
-                                        <button className="h-7 flex items-center gap-1 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 px-2 rounded-full text-xs transition-all">
-                                            {(() => {
-                                                const opt =
-                                                    completionSortOptions.find(
-                                                        (o) =>
-                                                            o.value ===
-                                                            completionSort,
-                                                    )!;
-                                                const Icon = opt.icon;
-                                                return (
-                                                    <>
-                                                        <Icon className="h-3.5 w-3.5" />
-                                                        {opt.label}
-                                                    </>
-                                                );
-                                            })()}
-                                        </button>
-                                    </Dropdown.Trigger>
-                                    <Dropdown.Popover>
-                                        <Dropdown.Menu
-                                            aria-label="Sortierung"
-                                            selectionMode="single"
-                                            selectedKeys={
-                                                new Set([completionSort])
-                                            }
-                                            onSelectionChange={(keys) => {
-                                                const key = Array.from(keys)[0];
-                                                if (key)
-                                                    setCompletionSort(
-                                                        key as any,
-                                                    );
-                                            }}
-                                        >
-                                            {completionSortOptions.map(
-                                                (option) => (
-                                                    <Dropdown.Item
-                                                        key={option.value}
-                                                        id={option.value}
-                                                    >
-                                                        <div className="flex items-center gap-2">
-                                                            <option.icon className="w-4 h-4 text-neutral-400" />
-                                                            {option.label}
-                                                        </div>
-                                                    </Dropdown.Item>
-                                                ),
-                                            )}
-                                        </Dropdown.Menu>
-                                    </Dropdown.Popover>
-                                </Dropdown>
-
                                 {/* Split toggle */}
                                 {selectedResource && (
                                     <button
@@ -959,6 +1222,18 @@ function Home() {
                                 </div>
                             )}
                         </div>
+
+                        {canShowExplorerHoverPreview && (
+                            <button
+                                type="button"
+                                aria-label="Breite der Explorer-Vorschau ändern"
+                                title="Explorer-Vorschau breiter/schmaler ziehen"
+                                onPointerDown={onExplorerHoverPreviewResizeStart}
+                                className="absolute inset-y-0 right-0 w-3 cursor-ew-resize group"
+                            >
+                                <span className="absolute inset-y-6 right-1.5 w-px rounded-full bg-neutral-700/70 transition-colors group-hover:bg-blue-400/80 group-active:bg-blue-300" />
+                            </button>
+                        )}
                     </section>
 
                     {/* Resize handle */}
@@ -988,21 +1263,6 @@ function Home() {
                             <div className="h-11 border-b border-neutral-800 px-3 flex items-center gap-2">
                                 <button
                                     type="button"
-                                    title="Im Browser öffnen"
-                                    onClick={() => {
-                                        void window.studySync?.openExternal?.(
-                                            viewerSrc,
-                                        );
-                                    }}
-                                    className="w-7 h-7 flex items-center justify-center rounded-full text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-all shrink-0"
-                                >
-                                    <ExternalLink className="h-4 w-4" />
-                                </button>
-                                <span className="flex-1 truncate text-sm text-neutral-200">
-                                    {selectedResource.name}
-                                </span>
-                                <button
-                                    type="button"
                                     title={
                                         panelMode === 'viewer-only'
                                             ? 'Split View'
@@ -1016,13 +1276,29 @@ function Home() {
                                                 : 'viewer-only',
                                         );
                                     }}
-                                    className="w-7 h-7 flex items-center justify-center rounded-full text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-all"
+                                    className="w-7 h-7 flex items-center justify-center rounded-full text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-all shrink-0"
                                 >
                                     {panelMode === 'viewer-only' ? (
                                         <ArrowRightFromLine className="h-4 w-4" />
                                     ) : (
                                         <ArrowLeftFromLine className="h-4 w-4" />
                                     )}
+                                </button>
+                                <div className="flex-1" />
+                                <span className="max-w-[50%] truncate text-sm text-neutral-200 text-right">
+                                    {selectedResource.name}
+                                </span>
+                                <button
+                                    type="button"
+                                    title="Im Browser öffnen"
+                                    onClick={() => {
+                                        void window.studySync?.openExternal?.(
+                                            viewerSrc,
+                                        );
+                                    }}
+                                    className="w-7 h-7 flex items-center justify-center rounded-full text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-all"
+                                >
+                                    <ExternalLink className="h-4 w-4" />
                                 </button>
                             </div>
                             <div className="flex-1 relative">
