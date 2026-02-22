@@ -54,17 +54,17 @@ export function LoginGate({
             : null);
 
     return (
-        <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-slate-950 px-4">
+        <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-black px-4">
             <form
                 className="relative z-10 w-full max-w-sm rounded-[1rem] bg-[#111116] border border-[#22222a] p-8 shadow-2xl space-y-7"
                 onSubmit={onSubmit}
             >
                 <div className="space-y-1.5">
-                    <h1 className="text-2xl font-semibold text-slate-100">
+                    <h1 className="text-2xl font-semibold text-neutral-100">
                         Study Desktop
                     </h1>
                     {infoMessage && (
-                        <p className="text-[13px] text-slate-400 mt-2">
+                        <p className="text-[13px] text-neutral-400 mt-2">
                             {infoMessage}
                         </p>
                     )}
@@ -72,13 +72,13 @@ export function LoginGate({
 
                 <div className="space-y-5">
                     <div>
-                        <span className="block text-sm text-slate-400 font-medium mb-1.5">
+                        <span className="block text-sm text-neutral-400 font-medium mb-1.5">
                             Username
                         </span>
                         <input
                             type="text"
                             autoComplete="username"
-                            className="w-full h-11 px-3 mt-1.5 bg-[#18181f] border border-[#2a2a35] hover:bg-[#1d1d26] hover:border-[#353545] focus:bg-[#18181f] focus:border-cyan-500 focus:outline-none rounded-lg text-slate-100 placeholder:text-slate-600 transition-colors shadow-none"
+                            className="w-full h-11 px-3 mt-1.5 bg-[#18181f] border border-[#2a2a35] hover:bg-[#1d1d26] hover:border-[#353545] focus:bg-[#18181f] focus:border-cyan-500 focus:outline-none rounded-lg text-neutral-100 placeholder:text-neutral-600 transition-colors shadow-none"
                             value={loginUsername}
                             onChange={(e) => onUsernameChange(e.target.value)}
                             placeholder="Benutzername"
@@ -87,13 +87,13 @@ export function LoginGate({
                     </div>
 
                     <div>
-                        <span className="block text-sm text-slate-400 font-medium mb-1.5">
+                        <span className="block text-sm text-neutral-400 font-medium mb-1.5">
                             Passwort
                         </span>
                         <input
                             type="password"
                             autoComplete="current-password"
-                            className="w-full h-11 px-3 mt-1.5 bg-[#18181f] border border-[#2a2a35] hover:bg-[#1d1d26] hover:border-[#353545] focus:bg-[#18181f] focus:border-cyan-500 focus:outline-none rounded-lg text-slate-100 placeholder:text-slate-600 transition-colors shadow-none"
+                            className="w-full h-11 px-3 mt-1.5 bg-[#18181f] border border-[#2a2a35] hover:bg-[#1d1d26] hover:border-[#353545] focus:bg-[#18181f] focus:border-cyan-500 focus:outline-none rounded-lg text-neutral-100 placeholder:text-neutral-600 transition-colors shadow-none"
                             value={loginPassword}
                             onChange={(e) => onPasswordChange(e.target.value)}
                             placeholder="Dein Passwort"
@@ -101,7 +101,7 @@ export function LoginGate({
                     </div>
 
                     <label className="flex items-center gap-2.5 cursor-pointer mt-2 group">
-                        <div className="relative flex items-center justify-center w-[18px] h-[18px] rounded border-2 border-slate-600 bg-[#111116] group-hover:border-slate-500 transition-colors overflow-hidden">
+                        <div className="relative flex items-center justify-center w-[18px] h-[18px] rounded border-2 border-neutral-600 bg-[#111116] group-hover:border-neutral-500 transition-colors overflow-hidden">
                             <input
                                 type="checkbox"
                                 className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10 m-0"
@@ -128,7 +128,7 @@ export function LoginGate({
                                 </div>
                             )}
                         </div>
-                        <span className="text-slate-300 text-[13.5px] select-none">
+                        <span className="text-neutral-300 text-[13.5px] select-none">
                             Eingeloggt bleiben
                         </span>
                     </label>
@@ -143,9 +143,16 @@ export function LoginGate({
                 <Button
                     type="submit"
                     isDisabled={loginSubmitting}
-                    className="w-full font-medium bg-white text-black hover:bg-slate-200"
+                    className="w-full font-medium bg-white text-black hover:bg-neutral-200"
                 >
-                    Einloggen
+                    {loginSubmitting ? (
+                        <div className="flex items-center gap-2">
+                            <span className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+                            Einloggen...
+                        </div>
+                    ) : (
+                        'Einloggen'
+                    )}
                 </Button>
             </form>
         </div>

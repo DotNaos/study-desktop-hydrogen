@@ -190,6 +190,13 @@ function Home() {
         : null;
 
     const hasViewerContent = Boolean(viewerSrc && selectedResource);
+
+    const [viewerLoading, setViewerLoading] = useState(false);
+    useEffect(() => {
+        if (viewerSrc) {
+            setViewerLoading(true);
+        }
+    }, [viewerSrc]);
     const {
         panelMode,
         setPanelMode,
@@ -572,9 +579,6 @@ function Home() {
                         'success',
                     );
                 } else if (mode === 'share') {
-                    if (isFolderNode(exportNode)) {
-                        throw new Error('SHARE_RESOURCE_ONLY');
-                    }
                     const result = await window.studySync?.exportShare?.(
                         exportNode.id,
                     );
@@ -670,7 +674,7 @@ function Home() {
 
     if (authLoading || !apiBase) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-100">
+            <div className="min-h-screen flex items-center justify-center bg-black text-neutral-100">
                 <div className="flex items-center gap-3 text-sm">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Initialisiere App...
@@ -697,9 +701,9 @@ function Home() {
     }
 
     return (
-        <div className="h-screen flex bg-slate-950 text-slate-100">
+        <div className="h-screen flex bg-black text-neutral-100">
             {/* ── Sidenav – vertical tabs ──────────────────────────────── */}
-            <nav className="w-16 shrink-0 flex flex-col border-r border-slate-800 bg-slate-950">
+            <nav className="w-16 shrink-0 flex flex-col border-r border-neutral-800 bg-black">
                 {/* spacer top */}
                 <div className="flex-1" />
 
@@ -717,8 +721,8 @@ function Home() {
                         className={cn(
                             'relative flex flex-col items-center justify-center gap-1 py-3 w-full text-[10px] font-medium transition-all select-none',
                             viewMode === key
-                                ? 'text-slate-100 before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-blue-400'
-                                : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/40',
+                                ? 'text-neutral-100 before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-blue-400'
+                                : 'text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800/40',
                         )}
                     >
                         <Icon className="h-4 w-4" />
@@ -732,7 +736,7 @@ function Home() {
                 <button
                     title="Logout"
                     onClick={() => void onLogout()}
-                    className="flex flex-col items-center justify-center gap-1 py-3 w-full text-[10px] font-medium text-slate-500 hover:text-red-400 hover:bg-slate-800/40 transition-all select-none"
+                    className="flex flex-col items-center justify-center gap-1 py-3 w-full text-[10px] font-medium text-neutral-500 hover:text-red-400 hover:bg-neutral-800/40 transition-all select-none"
                 >
                     <LogOut className="h-4 w-4" />
                     Logout
@@ -754,13 +758,13 @@ function Home() {
                                 'transition-[width] duration-220 ease-out',
                             hasViewerContent &&
                                 explorerWidthPct > 0 &&
-                                'border-r border-slate-800',
+                                'border-r border-neutral-800',
                             explorerWidthPct <= 0.01 && 'pointer-events-none',
                         )}
                     >
                         {/* Explorer toolbar */}
-                        <div className="h-11 border-b border-slate-800 px-3 flex items-center justify-between gap-2">
-                            <div className="text-sm font-medium text-slate-200">
+                        <div className="h-11 border-b border-neutral-800 px-3 flex items-center justify-between gap-2">
+                            <div className="text-sm font-medium text-neutral-200">
                                 Explorer
                             </div>
                             <div className="flex items-center gap-1.5">
@@ -774,7 +778,7 @@ function Home() {
                                         }
                                         className="h-3.5 w-3.5"
                                     />
-                                    <span className="text-xs text-slate-400">
+                                    <span className="text-xs text-neutral-400">
                                         Hide done
                                     </span>
                                 </label>
@@ -782,7 +786,7 @@ function Home() {
                                 {/* Sort dropdown */}
                                 <Dropdown>
                                     <Dropdown.Trigger>
-                                        <button className="h-7 flex items-center gap-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800 px-2 rounded-full text-xs transition-all">
+                                        <button className="h-7 flex items-center gap-1 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 px-2 rounded-full text-xs transition-all">
                                             {(() => {
                                                 const opt =
                                                     completionSortOptions.find(
@@ -822,7 +826,7 @@ function Home() {
                                                         id={option.value}
                                                     >
                                                         <div className="flex items-center gap-2">
-                                                            <option.icon className="w-4 h-4 text-slate-400" />
+                                                            <option.icon className="w-4 h-4 text-neutral-400" />
                                                             {option.label}
                                                         </div>
                                                     </Dropdown.Item>
@@ -848,7 +852,7 @@ function Home() {
                                                     : 'explorer-only',
                                             );
                                         }}
-                                        className="w-7 h-7 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-all"
+                                        className="w-7 h-7 flex items-center justify-center rounded-full text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-all"
                                     >
                                         {panelMode === 'explorer-only' ? (
                                             <ArrowLeftFromLine className="h-4 w-4" />
@@ -864,17 +868,17 @@ function Home() {
                         <div className="flex-1 min-h-0">
                             {viewMode === 'list' ? (
                                 <div className="h-full overflow-auto">
-                                    <div className="px-3 py-2 text-xs uppercase tracking-wider text-slate-500">
+                                    <div className="px-3 py-2 text-xs uppercase tracking-wider text-neutral-500">
                                         Semester / Kurse / Wochen / Ressourcen
                                     </div>
 
                                     {treeLoading ? (
-                                        <div className="px-3 py-4 text-sm text-slate-400 flex items-center gap-2">
+                                        <div className="px-3 py-4 text-sm text-neutral-400 flex items-center gap-2">
                                             <Loader2 className="h-4 w-4 animate-spin" />
                                             Lade Inhalte...
                                         </div>
                                     ) : sortedRoots.length === 0 ? (
-                                        <div className="px-3 py-4 text-sm text-slate-400">
+                                        <div className="px-3 py-4 text-sm text-neutral-400">
                                             Keine Inhalte gefunden.
                                         </div>
                                     ) : (
@@ -912,12 +916,12 @@ function Home() {
                             ) : (
                                 <div className="h-full min-h-[320px]">
                                     {treeLoading ? (
-                                        <div className="h-full flex items-center justify-center text-sm text-slate-400">
+                                        <div className="h-full flex items-center justify-center text-sm text-neutral-400">
                                             <Loader2 className="h-4 w-4 animate-spin mr-2" />
                                             Lade Inhalte...
                                         </div>
                                     ) : sortedRoots.length === 0 ? (
-                                        <div className="h-full flex items-center justify-center text-sm text-slate-400">
+                                        <div className="h-full flex items-center justify-center text-sm text-neutral-400">
                                             Keine Inhalte gefunden.
                                         </div>
                                     ) : (
@@ -970,9 +974,9 @@ function Home() {
                             type="button"
                             aria-label="Panels resized handle"
                             onPointerDown={onResizeStart}
-                            className="w-1.5 shrink-0 bg-slate-900 hover:bg-slate-700 border-r border-l border-slate-800 cursor-col-resize flex items-center justify-center transition-colors"
+                            className="w-1.5 shrink-0 bg-neutral-900 hover:bg-neutral-700 border-r border-l border-neutral-800 cursor-col-resize flex items-center justify-center transition-colors"
                         >
-                            <GripVertical className="h-4 w-4 text-slate-600" />
+                            <GripVertical className="h-4 w-4 text-neutral-600" />
                         </button>
                     )}
 
@@ -988,7 +992,7 @@ function Home() {
                             )}
                         >
                             {/* PDF toolbar — ghost pill buttons */}
-                            <div className="h-11 border-b border-slate-800 px-3 flex items-center gap-2">
+                            <div className="h-11 border-b border-neutral-800 px-3 flex items-center gap-2">
                                 <button
                                     type="button"
                                     title="Im Browser öffnen"
@@ -997,11 +1001,11 @@ function Home() {
                                             viewerSrc,
                                         );
                                     }}
-                                    className="w-7 h-7 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-all shrink-0"
+                                    className="w-7 h-7 flex items-center justify-center rounded-full text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-all shrink-0"
                                 >
                                     <ExternalLink className="h-4 w-4" />
                                 </button>
-                                <span className="flex-1 truncate text-sm text-slate-200">
+                                <span className="flex-1 truncate text-sm text-neutral-200">
                                     {selectedResource.name}
                                 </span>
                                 <button
@@ -1019,7 +1023,7 @@ function Home() {
                                                 : 'viewer-only',
                                         );
                                     }}
-                                    className="w-7 h-7 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-all"
+                                    className="w-7 h-7 flex items-center justify-center rounded-full text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-all"
                                 >
                                     {panelMode === 'viewer-only' ? (
                                         <ArrowRightFromLine className="h-4 w-4" />
@@ -1028,12 +1032,23 @@ function Home() {
                                     )}
                                 </button>
                             </div>
-                            <iframe
-                                key={viewerSrc}
-                                src={viewerSrc}
-                                title={selectedResource.name}
-                                className="h-full w-full bg-white"
-                            />
+                            <div className="flex-1 relative">
+                                {viewerLoading && (
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 backdrop-blur-sm z-10 transition-opacity">
+                                        <Loader2 className="h-8 w-8 text-neutral-400 animate-spin mb-4" />
+                                        <div className="text-sm text-neutral-400 font-medium">
+                                            Lade Dokument...
+                                        </div>
+                                    </div>
+                                )}
+                                <iframe
+                                    key={viewerSrc}
+                                    src={viewerSrc}
+                                    title={selectedResource.name}
+                                    className="h-full w-full bg-white border-0"
+                                    onLoad={() => setViewerLoading(false)}
+                                />
+                            </div>
                         </section>
                     )}
                 </div>

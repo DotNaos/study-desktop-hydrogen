@@ -77,16 +77,16 @@ export function ExplorerTree({
                                 'flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors mx-2 w-[calc(100%-16px)] outline-none focus-visible:ring-2 focus-visible:ring-white/50',
                                 selected
                                     ? 'bg-white/10 text-white font-medium shadow-sm'
-                                    : 'text-slate-300 hover:bg-white/5 hover:text-slate-100',
+                                    : 'text-neutral-300 hover:bg-white/5 hover:text-neutral-100',
                             )}
                             style={{ paddingLeft: `${depth * 14 + 8}px` }}
                         >
                             {folder ? (
                                 hasChildren ? (
                                     expanded ? (
-                                        <ChevronDown className="h-4 w-4 text-slate-500 shrink-0" />
+                                        <ChevronDown className="h-4 w-4 text-neutral-500 shrink-0" />
                                     ) : (
-                                        <ChevronRight className="h-4 w-4 text-slate-500 shrink-0" />
+                                        <ChevronRight className="h-4 w-4 text-neutral-500 shrink-0" />
                                     )
                                 ) : (
                                     <span className="w-4 shrink-0" />
@@ -101,7 +101,7 @@ export function ExplorerTree({
                                         'h-4 w-4 shrink-0',
                                         completed
                                             ? 'text-success'
-                                            : 'text-slate-500',
+                                            : 'text-neutral-500',
                                     )}
                                 />
                             ) : (
@@ -110,7 +110,7 @@ export function ExplorerTree({
                                         'h-4 w-4 shrink-0',
                                         completed
                                             ? 'text-success'
-                                            : 'text-slate-500',
+                                            : 'text-neutral-500',
                                     )}
                                 />
                             )}
@@ -118,7 +118,7 @@ export function ExplorerTree({
                             <span className="truncate">{node.name}</span>
 
                             {isBusy ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-500 shrink-0" />
+                                <Loader2 className="h-3.5 w-3.5 animate-spin text-neutral-500 shrink-0" />
                             ) : completed ? (
                                 <Check className="h-3.5 w-3.5 text-success shrink-0" />
                             ) : null}
@@ -126,11 +126,11 @@ export function ExplorerTree({
                             <div className="flex-1" />
                         </button>
                     </ContextMenuTrigger>
-                    <ContextMenuContent className="bg-slate-900 border-slate-700 text-slate-100">
+                    <ContextMenuContent className="bg-neutral-900 border-neutral-700 text-neutral-100">
                         <ContextMenuItem
                             disabled={completed}
                             onClick={() => onPersistCompletion(node, true)}
-                            className="focus:bg-slate-800 focus:text-white"
+                            className="focus:bg-neutral-800 focus:text-white"
                         >
                             <Check className="mr-2 h-4 w-4" />
                             {markCompletedLabel}
@@ -138,15 +138,15 @@ export function ExplorerTree({
                         <ContextMenuItem
                             disabled={!completed}
                             onClick={() => onPersistCompletion(node, false)}
-                            className="focus:bg-slate-800 focus:text-white"
+                            className="focus:bg-neutral-800 focus:text-white"
                         >
                             <Check className="mr-2 h-4 w-4" />
                             {markUncompletedLabel}
                         </ContextMenuItem>
-                        <ContextMenuSeparator className="bg-slate-700" />
+                        <ContextMenuSeparator className="bg-neutral-700" />
                         <ContextMenuItem
                             onClick={() => onOpenExportDialog(node)}
-                            className="focus:bg-slate-800 focus:text-white"
+                            className="focus:bg-neutral-800 focus:text-white"
                         >
                             <Upload className="mr-2 h-4 w-4" />
                             Exportieren...

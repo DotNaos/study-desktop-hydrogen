@@ -212,12 +212,12 @@ export function ZoomCanvas({
         const visualSize = Math.max(fitWidth, fitHeight, 600);
 
         const scale = Math.min(containerWidth, containerHeight) / visualSize;
-        const translateX = containerWidth / 2 - targetLayout.x * scale;
-        const translateY = containerHeight / 2 - targetLayout.y * scale;
+        const tranneutralX = containerWidth / 2 - targetLayout.x * scale;
+        const tranneutralY = containerHeight / 2 - targetLayout.y * scale;
 
         animate(worldRef.current, {
-            translateX,
-            translateY,
+            tranneutralX,
+            tranneutralY,
             scale,
             duration: 800,
             easing: 'outExpo',
@@ -283,7 +283,7 @@ export function ZoomCanvas({
             top: pos.y,
             width: pos.size,
             height: pos.size,
-            transform: 'translate(-50%, -50%)',
+            transform: 'tranneutral(-50%, -50%)',
             opacity: isAncestor && !isFocus ? 0 : 1,
         };
 
@@ -291,7 +291,7 @@ export function ZoomCanvas({
             'w-full h-full rounded-3xl shadow-xl border border-neutral-800 bg-neutral-900/40 backdrop-blur-md overflow-hidden transition-all hover:border-neutral-600 flex flex-col items-center justify-center';
 
         const Label = () => (
-            <div className="absolute top-[105%] w-[120%] left-1/2 -translate-x-1/2 text-center pointer-events-none">
+            <div className="absolute top-[105%] w-[120%] left-1/2 -tranneutral-x-1/2 text-center pointer-events-none">
                 <span className="text-sm font-bold text-neutral-300 drop-shadow-md leading-tight line-clamp-2 px-1">
                     {node.name}
                 </span>

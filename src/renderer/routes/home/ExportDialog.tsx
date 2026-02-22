@@ -31,9 +31,9 @@ export function ExportDialog({
 
     return (
         <div className="fixed inset-0 z-50 bg-black/65 flex items-center justify-center px-4">
-            <div className="w-full max-w-lg rounded-xl border border-slate-700 bg-slate-900 p-5">
+            <div className="w-full max-w-lg rounded-xl border border-neutral-700 bg-neutral-900 p-5">
                 <h2 className="text-lg font-semibold">Exportieren</h2>
-                <p className="mt-1 text-sm text-slate-400">{nodeName}</p>
+                <p className="mt-1 text-sm text-neutral-400">{nodeName}</p>
 
                 {exportError && (
                     <p className="mt-3 text-sm text-rose-400">{exportError}</p>
@@ -44,10 +44,10 @@ export function ExportDialog({
                         type="button"
                         disabled={exportMode !== null}
                         onClick={onSaveAs}
-                        className="w-full rounded-lg border border-slate-700 px-3 py-2 text-sm text-left hover:bg-slate-800 disabled:opacity-60"
+                        className="w-full rounded-lg border border-neutral-700 px-3 py-2 text-sm text-left hover:bg-neutral-800 disabled:opacity-60"
                     >
                         <div className="font-medium">Save As</div>
-                        <div className="text-xs text-slate-400">
+                        <div className="text-xs text-neutral-400">
                             Ungezippt in ausgewählten Zielordner exportieren
                         </div>
                     </button>
@@ -56,13 +56,13 @@ export function ExportDialog({
                         type="button"
                         disabled={exportMode !== null}
                         onClick={onShare}
-                        className="w-full rounded-lg border border-slate-700 px-3 py-2 text-sm text-left hover:bg-slate-800 disabled:opacity-60"
+                        className="w-full rounded-lg border border-neutral-700 px-3 py-2 text-sm text-left hover:bg-neutral-800 disabled:opacity-60"
                     >
                         <div className="font-medium flex items-center gap-2">
                             <Share2 className="h-4 w-4" />
                             Share
                         </div>
-                        <div className="text-xs text-slate-400">
+                        <div className="text-xs text-neutral-400">
                             ZIP erstellen und macOS Share-Dialog öffnen
                         </div>
                     </button>
@@ -71,13 +71,13 @@ export function ExportDialog({
                         type="button"
                         disabled={exportMode !== null}
                         onClick={onOpenWith}
-                        className="w-full rounded-lg border border-slate-700 px-3 py-2 text-sm text-left hover:bg-slate-800 disabled:opacity-60"
+                        className="w-full rounded-lg border border-neutral-700 px-3 py-2 text-sm text-left hover:bg-neutral-800 disabled:opacity-60"
                     >
                         <div className="font-medium flex items-center gap-2">
                             <ExternalLink className="h-4 w-4" />
                             Open With...
                         </div>
-                        <div className="text-xs text-slate-400">
+                        <div className="text-xs text-neutral-400">
                             App auswählen und Export direkt darin öffnen
                         </div>
                     </button>
@@ -86,10 +86,10 @@ export function ExportDialog({
                         type="button"
                         disabled={goodnotesDisabled}
                         onClick={onOpenGoodnotes}
-                        className="w-full rounded-lg border border-slate-700 px-3 py-2 text-sm text-left hover:bg-slate-800 disabled:opacity-60"
+                        className="w-full rounded-lg border border-neutral-700 px-3 py-2 text-sm text-left hover:bg-neutral-800 disabled:opacity-60"
                     >
                         <div className="font-medium">Open in Goodnotes</div>
-                        <div className="text-xs text-slate-400">
+                        <div className="text-xs text-neutral-400">
                             {!goodnotesAvailable
                                 ? 'Goodnotes ist nicht installiert'
                                 : isFolder
@@ -104,7 +104,7 @@ export function ExportDialog({
                         type="button"
                         disabled={exportMode !== null}
                         onClick={onClose}
-                        className="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:bg-slate-800 disabled:opacity-60"
+                        className="rounded-lg border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-800 disabled:opacity-60"
                     >
                         Schließen
                     </button>

@@ -1,14 +1,13 @@
-import { Check, Home, Layers, MoreHorizontal } from 'lucide-react'
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Slider } from '../../../shared/components/ui/slider'
-import { cn } from '../../../shared/lib/utils'
-import type { Node } from '../../zoomData'
+import { Check, Home, Layers } from 'lucide-react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { cn } from '../../../shared/lib/utils';
+import type { Node } from '../../zoomData';
 import {
     ContextMenu,
     ContextMenuContent,
     ContextMenuItem,
     ContextMenuTrigger,
-} from '../ui/context-menu'
+} from '../ui/context-menu';
 
 // Recursive preview grid component with true 1:1 aspect ratio cells
 function PreviewGrid({
@@ -18,107 +17,117 @@ function PreviewGrid({
     currentDepth = 0,
     showProgressFill = true,
 }: {
-    children: Node[]
-    getProgress: (node: Node) => number
-    maxDepth: number
-    currentDepth?: number
-    showProgressFill?: boolean
+    children: Node[];
+    getProgress: (node: Node) => number;
+    maxDepth: number;
+    currentDepth?: number;
+    showProgressFill?: boolean;
 }) {
-    const containerRef = useRef<HTMLDivElement>(null)
-    const [size, setSize] = useState({ width: 0, height: 0 })
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [size, setSize] = useState({ width: 0, height: 0 });
 
     useLayoutEffect(() => {
-        const el = containerRef.current
-        if (!el) return
+        const el = containerRef.current;
+        if (!el) return;
         const update = () => {
-            const { width, height } = el.getBoundingClientRect()
-            setSize({ width, height })
-        }
-        update()
-        const observer = new ResizeObserver(update)
-        observer.observe(el)
-        return () => observer.disconnect()
-    }, [])
+            const { width, height } = el.getBoundingClientRect();
+            setSize({ width, height });
+        };
+        update();
+        const observer = new ResizeObserver(update);
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, []);
 
     // Pre-compute values needed for placeholderPath useMemo (must be before early return)
     const itemCount =
-        children.length === 0 || currentDepth >= maxDepth ? 0 : Math.min(children.length, 64)
-    const gridSize = Math.ceil(Math.sqrt(itemCount)) || 1
-    const cols = gridSize
-    const rows = gridSize
-    const totalCells = gridSize * gridSize
-    const emptyCount = totalCells - itemCount
-    const baseGap = Math.max(2, 6 - currentDepth * 2)
-    const maxCellWidth = (size.width - (cols - 1) * baseGap) / cols
-    const maxCellHeight = (size.height - (rows - 1) * baseGap) / rows
-    const cellSize = Math.max(0, Math.floor(Math.min(maxCellWidth, maxCellHeight)))
-    const borderRadius = Math.max(2, Math.min(6, cellSize * 0.12))
+        children.length === 0 || currentDepth >= maxDepth
+            ? 0
+            : Math.min(children.length, 64);
+    const gridSize = Math.ceil(Math.sqrt(itemCount)) || 1;
+    const cols = gridSize;
+    const rows = gridSize;
+    const totalCells = gridSize * gridSize;
+    const emptyCount = totalCells - itemCount;
+    const baseGap = Math.max(2, 6 - currentDepth * 2);
+    const maxCellWidth = (size.width - (cols - 1) * baseGap) / cols;
+    const maxCellHeight = (size.height - (rows - 1) * baseGap) / rows;
+    const cellSize = Math.max(
+        0,
+        Math.floor(Math.min(maxCellWidth, maxCellHeight)),
+    );
+    const borderRadius = Math.max(2, Math.min(6, cellSize * 0.12));
 
     // Generate SVG path for connected Tetris placeholder shape (must be called before early return)
     const placeholderPath = useMemo(() => {
-        if (emptyCount === 0 || itemCount === 0) return null
+        if (emptyCount === 0 || itemCount === 0) return null;
 
         const positions = Array.from({ length: emptyCount }).map((_, i) => {
-            const pos = itemCount + i
-            return { row: Math.floor(pos / cols), col: pos % cols }
-        })
+            const pos = itemCount + i;
+            return { row: Math.floor(pos / cols), col: pos % cols };
+        });
 
         const isPlaceholder = (r: number, c: number) =>
-            positions.some((p) => p.row === r && p.col === c)
+            positions.some((p) => p.row === r && p.col === c);
 
         // Build path by tracing the outline
-        const gridW = cellSize + baseGap
-        const gridH = cellSize + baseGap
-        const r = borderRadius
+        const gridW = cellSize + baseGap;
+        const gridH = cellSize + baseGap;
+        const r = borderRadius;
 
         // Generate rounded rect segments for each cell, merging edges
-        let path = ''
+        let path = '';
         for (const pos of positions) {
-            const x = pos.col * gridW
-            const y = pos.row * gridH
-            const w = cellSize
-            const h = cellSize
+            const x = pos.col * gridW;
+            const y = pos.row * gridH;
+            const w = cellSize;
+            const h = cellSize;
 
-            const hasTop = isPlaceholder(pos.row - 1, pos.col)
-            const hasBottom = isPlaceholder(pos.row + 1, pos.col)
-            const hasLeft = isPlaceholder(pos.row, pos.col - 1)
-            const hasRight = isPlaceholder(pos.row, pos.col + 1)
+            const hasTop = isPlaceholder(pos.row - 1, pos.col);
+            const hasBottom = isPlaceholder(pos.row + 1, pos.col);
+            const hasLeft = isPlaceholder(pos.row, pos.col - 1);
+            const hasRight = isPlaceholder(pos.row, pos.col + 1);
 
             // Extend to fill gaps with neighbors
-            const extendRight = hasRight ? baseGap : 0
-            const extendBottom = hasBottom ? baseGap : 0
+            const extendRight = hasRight ? baseGap : 0;
+            const extendBottom = hasBottom ? baseGap : 0;
 
-            const tl = !hasTop && !hasLeft ? r : 0
-            const tr = !hasTop && !hasRight ? r : 0
-            const br = !hasBottom && !hasRight ? r : 0
-            const bl = !hasBottom && !hasLeft ? r : 0
+            const tl = !hasTop && !hasLeft ? r : 0;
+            const tr = !hasTop && !hasRight ? r : 0;
+            const br = !hasBottom && !hasRight ? r : 0;
+            const bl = !hasBottom && !hasLeft ? r : 0;
 
-            path += `M ${x + tl} ${y} `
-            path += `L ${x + w + extendRight - tr} ${y} `
-            if (tr > 0) path += `Q ${x + w + extendRight} ${y} ${x + w + extendRight} ${y + tr} `
-            path += `L ${x + w + extendRight} ${y + h + extendBottom - br} `
+            path += `M ${x + tl} ${y} `;
+            path += `L ${x + w + extendRight - tr} ${y} `;
+            if (tr > 0)
+                path += `Q ${x + w + extendRight} ${y} ${x + w + extendRight} ${y + tr} `;
+            path += `L ${x + w + extendRight} ${y + h + extendBottom - br} `;
             if (br > 0)
-                path += `Q ${x + w + extendRight} ${y + h + extendBottom} ${x + w + extendRight - br} ${y + h + extendBottom} `
-            path += `L ${x + bl} ${y + h + extendBottom} `
-            if (bl > 0) path += `Q ${x} ${y + h + extendBottom} ${x} ${y + h + extendBottom - bl} `
-            path += `L ${x} ${y + tl} `
-            if (tl > 0) path += `Q ${x} ${y} ${x + tl} ${y} `
-            path += 'Z '
+                path += `Q ${x + w + extendRight} ${y + h + extendBottom} ${x + w + extendRight - br} ${y + h + extendBottom} `;
+            path += `L ${x + bl} ${y + h + extendBottom} `;
+            if (bl > 0)
+                path += `Q ${x} ${y + h + extendBottom} ${x} ${y + h + extendBottom - bl} `;
+            path += `L ${x} ${y + tl} `;
+            if (tl > 0) path += `Q ${x} ${y} ${x + tl} ${y} `;
+            path += 'Z ';
         }
 
-        const totalW = cols * cellSize + (cols - 1) * baseGap
-        const totalH = rows * cellSize + (rows - 1) * baseGap
+        const totalW = cols * cellSize + (cols - 1) * baseGap;
+        const totalH = rows * cellSize + (rows - 1) * baseGap;
 
-        return { path, totalW, totalH }
-    }, [itemCount, emptyCount, cols, rows, cellSize, baseGap, borderRadius])
+        return { path, totalW, totalH };
+    }, [itemCount, emptyCount, cols, rows, cellSize, baseGap, borderRadius]);
 
     // Early return AFTER all hooks
     if (children.length === 0 || currentDepth >= maxDepth) {
-        return <div ref={containerRef} className="w-full h-full" />
+        return <div ref={containerRef} className="w-full h-full" />;
     }
 
     return (
-        <div ref={containerRef} className="w-full h-full flex items-center justify-center">
+        <div
+            ref={containerRef}
+            className="w-full h-full flex items-center justify-center"
+        >
             {cellSize > 0 && (
                 <div
                     className="grid relative"
@@ -129,12 +138,14 @@ function PreviewGrid({
                     }}
                 >
                     {children.slice(0, 64).map((child) => {
-                        const progress = getProgress(child)
-                        const isLeaf = !child.children || child.children.length === 0
-                        const grandchildren = child.children ?? []
+                        const progress = getProgress(child);
+                        const isLeaf =
+                            !child.children || child.children.length === 0;
+                        const grandchildren = child.children ?? [];
                         // Show progress fill only on the deepest visible layer
                         // Either it's a leaf OR we won't recurse further (at maxDepth - 1)
-                        const isDeepestLayer = isLeaf || currentDepth >= maxDepth - 1
+                        const isDeepestLayer =
+                            isLeaf || currentDepth >= maxDepth - 1;
 
                         return (
                             <div
@@ -146,7 +157,10 @@ function PreviewGrid({
                                     className="absolute bottom-0 left-0 w-full bg-green-500/70 transition-all"
                                     style={{
                                         height: `${progress}%`,
-                                        opacity: showProgressFill && isDeepestLayer ? 1 : 0,
+                                        opacity:
+                                            showProgressFill && isDeepestLayer
+                                                ? 1
+                                                : 0,
                                     }}
                                 />
                                 {/* Recursive nested preview */}
@@ -164,12 +178,14 @@ function PreviewGrid({
                                                 getProgress={getProgress}
                                                 maxDepth={maxDepth}
                                                 currentDepth={currentDepth + 1}
-                                                showProgressFill={showProgressFill}
+                                                showProgressFill={
+                                                    showProgressFill
+                                                }
                                             />
                                         </div>
                                     )}
                             </div>
-                        )
+                        );
                     })}
                     {/* Invisible spacers for grid layout */}
                     {Array.from({ length: emptyCount }).map((_, i) => (
@@ -190,8 +206,16 @@ function PreviewGrid({
                                     height="8"
                                     patternTransform="rotate(-45)"
                                 >
-                                    <rect width="8" height="8" fill="rgba(60,60,60,0.12)" />
-                                    <rect width="4" height="8" fill="rgba(255,255,255,0.008)" />
+                                    <rect
+                                        width="8"
+                                        height="8"
+                                        fill="rgba(60,60,60,0.12)"
+                                    />
+                                    <rect
+                                        width="4"
+                                        height="8"
+                                        fill="rgba(255,255,255,0.008)"
+                                    />
                                 </pattern>
                             </defs>
                             <path
@@ -204,16 +228,16 @@ function PreviewGrid({
                 </div>
             )}
         </div>
-    )
+    );
 }
 
 interface TreemapCanvasProps {
-    data: Node
-    focusId?: string
-    onFocusChange?: (id: string) => void
-    onLeafOpen?: (node: Node) => void
-    onToggleCompletion?: (node: Node, completed: boolean) => void
-    onExport?: (node: Node) => void
+    data: Node;
+    focusId?: string;
+    onFocusChange?: (id: string) => void;
+    onLeafOpen?: (node: Node) => void;
+    onToggleCompletion?: (node: Node, completed: boolean) => void;
+    onExport?: (node: Node) => void;
 }
 
 export function TreemapCanvas({
@@ -224,179 +248,182 @@ export function TreemapCanvas({
     onToggleCompletion,
     onExport,
 }: TreemapCanvasProps) {
-    const containerRef = useRef<HTMLDivElement>(null)
-    const suppressZoomOutUntilRef = useRef(0)
-    const [depthLevel, setDepthLevel] = useState(1) // 0, 1, 2, or 10 for "All"
-    const [showDepthPopover, setShowDepthPopover] = useState(false)
-    const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
+    const containerRef = useRef<HTMLDivElement>(null);
+    const suppressZoomOutUntilRef = useRef(0);
+    const [depthLevel, setDepthLevel] = useState(1); // 0, 1, 2, or 10 for "All"
+    const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
     // Cycle through depth levels: 0 → 1 → 2 → All(10) → 0
     const cycleDepth = () => {
-        if (depthLevel === 0) setDepthLevel(1)
-        else if (depthLevel === 1) setDepthLevel(2)
-        else if (depthLevel === 2) setDepthLevel(10)
-        else setDepthLevel(0)
-    }
+        if (depthLevel === 0) setDepthLevel(1);
+        else if (depthLevel === 1) setDepthLevel(2);
+        else if (depthLevel === 2) setDepthLevel(10);
+        else setDepthLevel(0);
+    };
 
-    const depthLabel = depthLevel >= 10 ? 'All' : String(depthLevel)
+    const depthLabel = depthLevel >= 10 ? 'All' : String(depthLevel);
 
-    const [internalFocusId, setInternalFocusId] = useState<string>(data.id)
-    const isControlled = externalFocusId !== undefined
-    const focusId = isControlled ? externalFocusId : internalFocusId
+    const [internalFocusId, setInternalFocusId] = useState<string>(data.id);
+    const isControlled = externalFocusId !== undefined;
+    const focusId = isControlled ? externalFocusId : internalFocusId;
 
     const handleFocusChange = (newId: string) => {
         if (onFocusChange) {
-            onFocusChange(newId)
+            onFocusChange(newId);
         }
         if (!isControlled) {
-            setInternalFocusId(newId)
+            setInternalFocusId(newId);
         }
-    }
+    };
 
     // Track container dimensions
     useEffect(() => {
-        const container = containerRef.current
-        if (!container) return
+        const container = containerRef.current;
+        if (!container) return;
 
         const updateDimensions = () => {
-            const { width, height } = container.getBoundingClientRect()
-            setDimensions({ width, height })
-        }
+            const { width, height } = container.getBoundingClientRect();
+            setDimensions({ width, height });
+        };
 
-        updateDimensions()
-        const observer = new ResizeObserver(updateDimensions)
-        observer.observe(container)
-        return () => observer.disconnect()
-    }, [])
+        updateDimensions();
+        const observer = new ResizeObserver(updateDimensions);
+        observer.observe(container);
+        return () => observer.disconnect();
+    }, []);
 
     const isNodeComplete = (node: Node): boolean => {
         if (typeof node.progress === 'number') {
-            return Math.round(node.progress) >= 100
+            return Math.round(node.progress) >= 100;
         }
-        return node.isComplete === true
-    }
+        return node.isComplete === true;
+    };
 
     // Find the focused node in the data tree
     const focusedData = useMemo(() => {
-        if (!focusId || focusId === data.id) return data
+        if (!focusId || focusId === data.id) return data;
         const findNode = (node: Node, id: string): Node | null => {
-            if (node.id === id) return node
+            if (node.id === id) return node;
             for (const child of node.children ?? []) {
-                const found = findNode(child, id)
-                if (found) return found
+                const found = findNode(child, id);
+                if (found) return found;
             }
-            return null
-        }
-        return findNode(data, focusId) ?? data
-    }, [data, focusId])
+            return null;
+        };
+        return findNode(data, focusId) ?? data;
+    }, [data, focusId]);
 
     // Get breadcrumb ancestors
     const ancestors = useMemo(() => {
-        const path: Node[] = []
+        const path: Node[] = [];
         const findPath = (node: Node, targetId: string): boolean => {
             if (node.id === targetId) {
-                path.push(node)
-                return true
+                path.push(node);
+                return true;
             }
             for (const child of node.children ?? []) {
                 if (findPath(child, targetId)) {
-                    path.unshift(node)
-                    return true
+                    path.unshift(node);
+                    return true;
                 }
             }
-            return false
-        }
-        findPath(data, focusId || data.id)
-        return path
-    }, [data, focusId])
+            return false;
+        };
+        findPath(data, focusId || data.id);
+        return path;
+    }, [data, focusId]);
 
     const handleNodeClick = (node: Node, e: React.MouseEvent) => {
-        e.stopPropagation()
+        e.stopPropagation();
 
-        const isLeaf = !node.children || node.children.length === 0
+        const isLeaf = !node.children || node.children.length === 0;
 
         if (node.type === 'item' || isLeaf) {
-            onLeafOpen?.(node)
+            onLeafOpen?.(node);
         } else {
             // Zoom into folder
-            handleFocusChange(node.id)
+            handleFocusChange(node.id);
         }
-    }
+    };
 
     const suppressNextZoomOut = () => {
-        suppressZoomOutUntilRef.current = Date.now() + 350
-    }
+        suppressZoomOutUntilRef.current = Date.now() + 350;
+    };
 
     const handleZoomOut = (e: React.MouseEvent<HTMLDivElement>) => {
         if (Date.now() < suppressZoomOutUntilRef.current) {
-            return
+            return;
         }
         if (e.target !== e.currentTarget) {
-            return
+            return;
         }
-        setShowDepthPopover(false)
         if (ancestors.length > 1) {
-            const parentIndex = ancestors.length - 2
-            handleFocusChange(ancestors[parentIndex].id)
+            const parentIndex = ancestors.length - 2;
+            handleFocusChange(ancestors[parentIndex].id);
         }
-    }
+    };
 
     // Calculate progress for a node
     const getProgress = (node: Node): number => {
-        const isLeaf = !node.children || node.children.length === 0
+        const isLeaf = !node.children || node.children.length === 0;
 
         // For leaf nodes, use the progress field if available, otherwise fallback to isComplete
         if (isLeaf) {
-            if (node.progress !== undefined) return node.progress
-            return isNodeComplete(node) ? 100 : 0
+            if (node.progress !== undefined) return node.progress;
+            return isNodeComplete(node) ? 100 : 0;
         }
 
         // For folders, compute average progress from all leaf descendants
-        let totalProgress = 0
-        let leafCount = 0
+        let totalProgress = 0;
+        let leafCount = 0;
 
         const computeFromChildren = (n: Node) => {
-            const nIsLeaf = !n.children || n.children.length === 0
+            const nIsLeaf = !n.children || n.children.length === 0;
             if (nIsLeaf) {
-                leafCount++
+                leafCount++;
                 if (n.progress !== undefined) {
-                    totalProgress += n.progress
+                    totalProgress += n.progress;
                 } else if (isNodeComplete(n)) {
-                    totalProgress += 100
+                    totalProgress += 100;
                 }
             } else {
-                n.children?.forEach(computeFromChildren)
+                n.children?.forEach(computeFromChildren);
             }
-        }
+        };
 
-        computeFromChildren(node)
-        return leafCount > 0 ? Math.round(totalProgress / leafCount) : 0
-    }
+        computeFromChildren(node);
+        return leafCount > 0 ? Math.round(totalProgress / leafCount) : 0;
+    };
 
-    const children = focusedData.children ?? []
+    const children = focusedData.children ?? [];
 
     // Max depth for preview grid
-    const maxPreviewDepth = depthLevel
+    const maxPreviewDepth = depthLevel;
 
     // Calculate grid dimensions to fit screen
-    const headerHeight = ancestors.length > 1 ? 56 : 48 // breadcrumb + toggle
-    const availableHeight = dimensions.height - headerHeight - 32 // padding
-    const availableWidth = dimensions.width - 32 // padding
+    const headerHeight = ancestors.length > 1 ? 56 : 48; // breadcrumb + toggle
+    const availableHeight = dimensions.height - headerHeight - 32; // padding
+    const availableWidth = dimensions.width - 32; // padding
 
-    const itemCount = children.length || 1
+    const itemCount = children.length || 1;
     // Calculate optimal grid layout based on available space
-    const gap = 12
-    const labelHeight = 40 // Height for name + percentage below each cell
+    const gap = 12;
+    const labelHeight = 40; // Height for name + percentage below each cell
 
     // Find best column count that uses space efficiently
     const cols =
-        Math.ceil(Math.sqrt(itemCount * (availableWidth / Math.max(availableHeight, 1)))) || 1
-    const rows = Math.ceil(itemCount / cols)
+        Math.ceil(
+            Math.sqrt(
+                itemCount * (availableWidth / Math.max(availableHeight, 1)),
+            ),
+        ) || 1;
+    const rows = Math.ceil(itemCount / cols);
 
     // Calculate cell size to fit everything
-    const maxCellWidth = (availableWidth - (cols - 1) * gap) / cols
-    const maxCellHeight = (availableHeight - (rows - 1) * gap - rows * labelHeight) / rows
-    const cellSize = Math.min(maxCellWidth, maxCellHeight, 300) // max 300px
+    const maxCellWidth = (availableWidth - (cols - 1) * gap) / cols;
+    const maxCellHeight =
+        (availableHeight - (rows - 1) * gap - rows * labelHeight) / rows;
+    const cellSize = Math.min(maxCellWidth, maxCellHeight, 300); // max 300px
 
     return (
         <div
@@ -410,17 +437,23 @@ export function TreemapCanvas({
                 <div className="flex items-center gap-1 text-sm flex-wrap min-w-0 flex-1 overflow-hidden">
                     {ancestors.length > 1 ? (
                         ancestors.map((a, i) => (
-                            <span key={a.id} className="flex items-center gap-1">
-                                {i > 0 && <span className="text-neutral-600">/</span>}
+                            <span
+                                key={a.id}
+                                className="flex items-center gap-1"
+                            >
+                                {i > 0 && (
+                                    <span className="text-neutral-600">/</span>
+                                )}
                                 <button
                                     type="button"
                                     className={cn(
                                         'text-neutral-400 hover:text-white transition px-1 py-0.5 rounded hover:bg-neutral-800',
-                                        i === ancestors.length - 1 && 'text-white font-medium',
+                                        i === ancestors.length - 1 &&
+                                            'text-white font-medium',
                                     )}
                                     onClick={(e) => {
-                                        e.stopPropagation()
-                                        handleFocusChange(a.id)
+                                        e.stopPropagation();
+                                        handleFocusChange(a.id);
                                     }}
                                 >
                                     {a.name}
@@ -428,7 +461,9 @@ export function TreemapCanvas({
                             </span>
                         ))
                     ) : (
-                        <span className="text-white font-medium">{focusedData.name}</span>
+                        <span className="text-white font-medium">
+                            {focusedData.name}
+                        </span>
                     )}
                 </div>
 
@@ -439,54 +474,15 @@ export function TreemapCanvas({
                         type="button"
                         className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition text-sm bg-neutral-900 text-neutral-300 hover:text-white hover:bg-neutral-800"
                         onClick={(e) => {
-                            e.stopPropagation()
-                            cycleDepth()
+                            e.stopPropagation();
+                            cycleDepth();
                         }}
                     >
                         <Layers className="w-4 h-4" />
-                        <span className="font-mono min-w-[24px]">{depthLabel}</span>
+                        <span className="font-mono min-w-[24px]">
+                            {depthLabel}
+                        </span>
                     </button>
-
-                    {/* More options button with popover */}
-                    <div className="relative">
-                        <button
-                            type="button"
-                            className="p-1.5 rounded-lg transition text-sm bg-neutral-900 text-neutral-400 hover:text-white hover:bg-neutral-800"
-                            onClick={(e) => {
-                                e.stopPropagation()
-                                setShowDepthPopover(!showDepthPopover)
-                            }}
-                        >
-                            <MoreHorizontal className="w-4 h-4" />
-                        </button>
-
-                        {/* Depth slider popover */}
-                        {showDepthPopover && (
-                            <div
-                                className="absolute top-full right-0 mt-2 p-4 bg-neutral-900 border border-neutral-700 rounded-xl shadow-xl z-[100] min-w-[200px]"
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                <div className="text-xs text-neutral-400 mb-2">Depth Level</div>
-                                <div className="flex items-center gap-3">
-                                    <Slider
-                                        min={0}
-                                        max={10}
-                                        step={1}
-                                        value={[depthLevel]}
-                                        onValueChange={(value) => setDepthLevel(value[0])}
-                                        className="flex-1"
-                                    />
-                                    <span className="text-sm font-mono text-white min-w-[28px] text-right">
-                                        {depthLabel}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between text-[10px] text-neutral-500 mt-1">
-                                    <span>0</span>
-                                    <span>All</span>
-                                </div>
-                            </div>
-                        )}
-                    </div>
 
                     {/* Home button */}
                     {focusId && focusId !== data.id && (
@@ -494,8 +490,8 @@ export function TreemapCanvas({
                             type="button"
                             className="p-2 bg-neutral-900 text-neutral-400 hover:text-white rounded-lg transition hover:bg-neutral-800"
                             onClick={(e) => {
-                                e.stopPropagation()
-                                handleFocusChange(data.id)
+                                e.stopPropagation();
+                                handleFocusChange(data.id);
                             }}
                         >
                             <Home className="w-4 h-4" />
@@ -514,14 +510,18 @@ export function TreemapCanvas({
                     }}
                 >
                     {children.map((item) => {
-                        const progress = getProgress(item)
-                        const isLeaf = !item.children || item.children.length === 0
-                        const isComplete = isNodeComplete(item)
-                        const grandchildren = item.children ?? []
-                        const padding = Math.max(6, cellSize * 0.05)
+                        const progress = getProgress(item);
+                        const isLeaf =
+                            !item.children || item.children.length === 0;
+                        const isComplete = isNodeComplete(item);
+                        const grandchildren = item.children ?? [];
+                        const padding = Math.max(6, cellSize * 0.05);
                         // Inner radius should be outer radius (12px for rounded-xl) minus padding
-                        const outerRadius = 12
-                        const innerRadius = Math.max(4, outerRadius - padding * 0.5)
+                        const outerRadius = 12;
+                        const innerRadius = Math.max(
+                            4,
+                            outerRadius - padding * 0.5,
+                        );
 
                         const cellContent = (
                             <div className="flex flex-col">
@@ -577,17 +577,19 @@ export function TreemapCanvas({
                                     </span>
                                 </div>
                             </div>
-                        )
+                        );
 
                         return (
                             <ContextMenu key={item.id}>
-                                <ContextMenuTrigger asChild>{cellContent}</ContextMenuTrigger>
+                                <ContextMenuTrigger asChild>
+                                    {cellContent}
+                                </ContextMenuTrigger>
                                 <ContextMenuContent className="bg-neutral-900 border-neutral-700">
                                     <ContextMenuItem
                                         disabled={!onToggleCompletion}
                                         onClick={() => {
-                                            suppressNextZoomOut()
-                                            onToggleCompletion?.(item, true)
+                                            suppressNextZoomOut();
+                                            onToggleCompletion?.(item, true);
                                         }}
                                         className="text-neutral-200 focus:bg-neutral-800 focus:text-white"
                                     >
@@ -599,8 +601,8 @@ export function TreemapCanvas({
                                     <ContextMenuItem
                                         disabled={!onToggleCompletion}
                                         onClick={() => {
-                                            suppressNextZoomOut()
-                                            onToggleCompletion?.(item, false)
+                                            suppressNextZoomOut();
+                                            onToggleCompletion?.(item, false);
                                         }}
                                         className="text-neutral-200 focus:bg-neutral-800 focus:text-white"
                                     >
@@ -612,8 +614,8 @@ export function TreemapCanvas({
                                     <ContextMenuItem
                                         disabled={!onExport}
                                         onClick={() => {
-                                            suppressNextZoomOut()
-                                            onExport?.(item)
+                                            suppressNextZoomOut();
+                                            onExport?.(item);
                                         }}
                                         className="text-neutral-200 focus:bg-neutral-800 focus:text-white"
                                     >
@@ -621,10 +623,10 @@ export function TreemapCanvas({
                                     </ContextMenuItem>
                                 </ContextMenuContent>
                             </ContextMenu>
-                        )
+                        );
                     })}
                 </div>
             </div>
         </div>
-    )
+    );
 }
