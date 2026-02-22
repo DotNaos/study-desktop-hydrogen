@@ -4,6 +4,7 @@ import {
     ArrowDown,
     ArrowUp,
     ArrowUpDown,
+    Download,
     ExternalLink,
     GripVertical,
     LayoutGrid,
@@ -12,6 +13,9 @@ import {
     LogOut,
     Maximize,
     Minimize,
+    RefreshCw,
+    Settings,
+    RotateCcw,
     SlidersHorizontal,
 } from 'lucide-react';
 import type { FormEvent, PointerEvent as ReactPointerEvent } from 'react';
@@ -110,6 +114,8 @@ function Home() {
     const [loginSubmitting, setLoginSubmitting] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
     const [updaterState, setUpdaterState] = useState<UpdaterState | null>(null);
+    const [showStartupUpdateCard, setShowStartupUpdateCard] = useState(false);
+    const [isUpdateCardDismissed, setIsUpdateCardDismissed] = useState(false);
     const [updaterActionBusy, setUpdaterActionBusy] = useState<
         'check' | 'download' | 'install' | null
     >(null);
@@ -147,6 +153,7 @@ function Home() {
         startWidth: number;
     } | null>(null);
     const isExplorerHoverPreviewResizingRef = useRef(false);
+    const updaterCheckOriginRef = useRef<'startup' | 'manual'>('startup');
 
     const nodeMap = useMemo(() => {
         return new Map(flattenNodes(roots).map((node) => [node.id, node]));
@@ -399,6 +406,35 @@ function Home() {
         [dismissToast],
     );
 
+    const syncUpdaterOverlayVisibility = useCallback((state: UpdaterState) => {
+        if (updaterCheckOriginRef.current !== 'startup') {
+            if (state.stage === 'not-available') {
+                pushToast('Kein Update verfügbar.', 'success');
+            }
+            if (
+                state.stage === 'not-available' ||
+                state.stage === 'error' ||
+                state.stage === 'downloaded'
+            ) {
+                updaterCheckOriginRef.current = 'startup';
+            }
+            return;
+        }
+
+        if (
+            state.stage === 'available' ||
+            state.stage === 'downloading' ||
+            state.stage === 'downloaded'
+        ) {
+            setShowStartupUpdateCard(true);
+            return;
+        }
+
+        if (state.stage === 'idle' || state.stage === 'not-available') {
+            setShowStartupUpdateCard(false);
+        }
+    }, [pushToast]);
+
     useEffect(() => {
         return () => {
             for (const timeoutId of toastTimeoutsRef.current) {
@@ -584,6 +620,7 @@ function Home() {
                 const state = await window.studySync?.updaterGetState?.();
                 if (!disposed && state) {
                     setUpdaterState(state);
+                    syncUpdaterOverlayVisibility(state);
                 }
             } catch {
                 // noop
@@ -597,6 +634,7 @@ function Home() {
                 return;
             }
             setUpdaterState(state);
+            syncUpdaterOverlayVisibility(state);
             if (
                 state.stage !== 'checking' &&
                 state.stage !== 'available' &&
@@ -610,7 +648,7 @@ function Home() {
             disposed = true;
             unsubscribe?.();
         };
-    }, []);
+    }, [syncUpdaterOverlayVisibility]);
 
     useEffect(() => {
         try {
@@ -959,6 +997,7 @@ function Home() {
         completionSortOptions[0];
 
     const triggerUpdateCheck = useCallback(async () => {
+        updaterCheckOriginRef.current = 'manual';
         setUpdaterActionBusy('check');
         try {
             const result = await window.studySync?.updaterCheckForUpdates?.();
@@ -1008,6 +1047,16 @@ function Home() {
             setUpdaterActionBusy(null);
         }
     }, [pushToast]);
+
+    const canDownloadUpdate = updaterState?.stage === 'available';
+    const canInstallUpdate = updaterState?.stage === 'downloaded';
+    const showUpdateOverlayCard = showStartupUpdateCard && !isUpdateCardDismissed;
+    const updateSettingsLabel =
+        updaterActionBusy === 'check'
+            ? 'Prüfe...'
+            : updaterState?.stage === 'checking'
+              ? 'Prüfe auf Updates...'
+              : 'Check for updates';
 
     if (authLoading || !apiBase) {
         return (
@@ -1145,15 +1194,96 @@ function Home() {
                     </Dropdown.Popover>
                 </Dropdown>
 
-                {/* Logout */}
-                <button
-                    title="Logout"
-                    onClick={() => void onLogout()}
-                    className="flex flex-col items-center justify-center gap-1 py-3 w-full text-[10px] font-medium text-neutral-500 hover:text-red-400 hover:bg-neutral-800/40 transition-all select-none"
-                >
-                    <LogOut className="h-4 w-4" />
-                    Logout
-                </button>
+                {/* Settings menu */}
+                <Dropdown>
+                    <Dropdown.Trigger>
+                        <button
+                            title="Settings"
+                            className="flex flex-col items-center justify-center gap-1 py-3 w-full text-[10px] font-medium text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800/40 transition-all select-none"
+                        >
+                            <Settings className="h-4 w-4" />
+                            Settings
+                        </button>
+                    </Dropdown.Trigger>
+                    <Dropdown.Popover placement="top start" className="min-w-[280px]">
+                        <div className="rounded-2xl border border-neutral-800/90 bg-neutral-950/95 p-2.5 shadow-2xl backdrop-blur-md">
+                            <div className="px-2.5 pb-2">
+                                <div className="text-[11px] uppercase tracking-[0.16em] text-neutral-500">
+                                    Updates
+                                </div>
+                                <div className="mt-1 text-xs text-neutral-400">
+                                    {updaterState?.latestVersion &&
+                                    (updaterState.stage === 'available' ||
+                                        updaterState.stage === 'downloading' ||
+                                        updaterState.stage === 'downloaded')
+                                        ? `v${updaterState.currentVersion} -> v${updaterState.latestVersion}`
+                                        : `Installiert: v${updaterState?.currentVersion ?? '—'}`}
+                                </div>
+                            </div>
+
+                            <div className="space-y-1">
+                                <button
+                                    type="button"
+                                    onClick={() => void triggerUpdateCheck()}
+                                    disabled={updaterActionBusy === 'check'}
+                                    className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-sm text-neutral-100 hover:bg-neutral-900/60 disabled:opacity-50"
+                                >
+                                    <RefreshCw
+                                        className={cn(
+                                            'h-4 w-4 text-neutral-400',
+                                            updaterActionBusy === 'check' &&
+                                                'animate-spin',
+                                        )}
+                                    />
+                                    <span>{updateSettingsLabel}</span>
+                                </button>
+
+                                {canDownloadUpdate && (
+                                    <button
+                                        type="button"
+                                        onClick={() => void triggerUpdateDownload()}
+                                        disabled={updaterActionBusy === 'download'}
+                                        className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-sm text-blue-100 hover:bg-blue-950/40 disabled:opacity-50"
+                                    >
+                                        <Download className="h-4 w-4 text-blue-300" />
+                                        <span>
+                                            {updaterActionBusy === 'download'
+                                                ? 'Lade Update...'
+                                                : 'Download update'}
+                                        </span>
+                                    </button>
+                                )}
+
+                                {canInstallUpdate && (
+                                    <button
+                                        type="button"
+                                        onClick={() => void triggerUpdateInstall()}
+                                        disabled={updaterActionBusy === 'install'}
+                                        className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-sm text-emerald-100 hover:bg-emerald-950/40 disabled:opacity-50"
+                                    >
+                                        <RotateCcw className="h-4 w-4 text-emerald-300" />
+                                        <span>
+                                            {updaterActionBusy === 'install'
+                                                ? 'Starte neu...'
+                                                : 'Restart & update'}
+                                        </span>
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="my-1.5 h-px bg-neutral-800" />
+
+                            <button
+                                type="button"
+                                onClick={() => void onLogout()}
+                                className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-sm text-neutral-100 hover:bg-neutral-900/60 hover:text-red-300"
+                            >
+                                <LogOut className="h-4 w-4 text-neutral-400" />
+                                <span>Logout</span>
+                            </button>
+                        </div>
+                    </Dropdown.Popover>
+                </Dropdown>
             </nav>
 
             {/* ── Main content ─────────────────────────────────────────── */}
@@ -1455,13 +1585,16 @@ function Home() {
                     onClose={() => setExportNode(null)}
                 />
             )}
-            <UpdateStatusCard
-                state={updaterState}
-                actionBusy={updaterActionBusy}
-                onCheckForUpdates={triggerUpdateCheck}
-                onDownloadUpdate={triggerUpdateDownload}
-                onRestartToUpdate={triggerUpdateInstall}
-            />
+            {showUpdateOverlayCard && (
+                <UpdateStatusCard
+                    state={updaterState}
+                    actionBusy={updaterActionBusy}
+                    onCheckForUpdates={triggerUpdateCheck}
+                    onDownloadUpdate={triggerUpdateDownload}
+                    onRestartToUpdate={triggerUpdateInstall}
+                    onDismiss={() => setIsUpdateCardDismissed(true)}
+                />
+            )}
             <ToastStack toasts={toasts} onDismiss={dismissToast} />
         </div>
     );
