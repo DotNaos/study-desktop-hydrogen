@@ -1,9 +1,9 @@
-import { createWriteStream, promises as fs } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
 import type { SyncNode } from '@aryazos/study/types';
 import { createLogger } from '@aryazos/ts-base/logging';
 import archiver from 'archiver';
+import { createWriteStream, promises as fs } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { primaryProvider } from './providers';
 import { remoteCache } from './remoteCache';
 import { treeService } from './server/tree';
@@ -13,11 +13,6 @@ const logger = createLogger('com.aryazos.study-sync.export-desktop');
 export interface DesktopSaveAsResult {
     fileCount: number;
     outputPath: string;
-}
-
-export interface DesktopShareResult {
-    fileCount: number;
-    zipPath: string;
 }
 
 function sanitizeName(name: string): string {
@@ -209,26 +204,40 @@ export async function exportNodeSaveAs(
     return { fileCount, outputPath };
 }
 
-export async function exportNodeToShareZip(
+export async function exportNodeForAction(
     nodeId: string,
-): Promise<DesktopShareResult> {
+): Promise<{ fileCount: number; outputPath: string }> {
     const node = await getNodeById(nodeId);
-    const archiveName = sanitizeName(node.name);
-    const zipPath = path.join(
-        tmpdir(),
-        `study-desktop-export-${archiveName}-${Date.now()}.zip`,
+
+    if (isFolderNode(node)) {
+        const archiveName = sanitizeName(node.name);
+        const zipPath = path.join(
+            tmpdir(),
+            `study-desktop-export-${archiveName}-${Date.now()}.zip`,
+        );
+
+        const fileCount = await createZipForNode(node, zipPath);
+
+        logger.info('Created action archive for folder', {
+            nodeId,
+            zipPath,
+            fileCount,
+        });
+
+        return {
+            fileCount,
+            outputPath: zipPath,
+        };
+    }
+
+    const tempRoot = await fs.mkdtemp(
+        path.join(tmpdir(), 'study-desktop-action-'),
+    );
+    const fileCount = await writeNodeToDirectory(node, tempRoot);
+    const outputPath = path.join(
+        tempRoot,
+        withExtension(node.name, normalizeExtension(node.fileExtension)),
     );
 
-    const fileCount = await createZipForNode(node, zipPath);
-
-    logger.info('Created share archive', {
-        nodeId,
-        zipPath,
-        fileCount,
-    });
-
-    return {
-        fileCount,
-        zipPath,
-    };
+    return { fileCount, outputPath };
 }

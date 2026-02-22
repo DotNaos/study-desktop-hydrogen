@@ -593,9 +593,6 @@ function Home() {
                         'success',
                     );
                 } else if (mode === 'openWith') {
-                    if (isFolderNode(exportNode)) {
-                        throw new Error('OPEN_WITH_RESOURCE_ONLY');
-                    }
                     const result = await window.studySync?.exportOpenWith?.(
                         exportNode.id,
                     );
@@ -616,9 +613,6 @@ function Home() {
                         'success',
                     );
                 } else if (mode === 'openGoodnotes') {
-                    if (isFolderNode(exportNode)) {
-                        throw new Error('GOODNOTES_RESOURCE_ONLY');
-                    }
                     const result =
                         await window.studySync?.exportOpenGoodnotes?.(
                             exportNode.id,

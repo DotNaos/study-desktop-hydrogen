@@ -26,8 +26,7 @@ export function ExportDialog({
     onOpenGoodnotes,
     onClose,
 }: ExportDialogProps) {
-    const goodnotesDisabled =
-        !goodnotesAvailable || isFolder || exportMode !== null;
+    const goodnotesDisabled = !goodnotesAvailable || exportMode !== null;
 
     return (
         <div className="fixed inset-0 z-50 bg-black/65 flex items-center justify-center px-4">
@@ -63,7 +62,9 @@ export function ExportDialog({
                             Share
                         </div>
                         <div className="text-xs text-neutral-400">
-                            ZIP erstellen und macOS Share-Dialog öffnen
+                            {isFolder
+                                ? 'ZIP erstellen und macOS Share-Dialog öffnen'
+                                : 'macOS Share-Dialog öffnen'}
                         </div>
                     </button>
 
@@ -78,7 +79,9 @@ export function ExportDialog({
                             Open With...
                         </div>
                         <div className="text-xs text-neutral-400">
-                            App auswählen und Export direkt darin öffnen
+                            {isFolder
+                                ? 'ZIP erstellen und App auswählen'
+                                : 'App auswählen und Export direkt darin öffnen'}
                         </div>
                     </button>
 
@@ -93,7 +96,7 @@ export function ExportDialog({
                             {!goodnotesAvailable
                                 ? 'Goodnotes ist nicht installiert'
                                 : isFolder
-                                  ? 'Nur für einzelne PDF-Ressourcen verfügbar'
+                                  ? 'ZIP erstellen und in Goodnotes öffnen'
                                   : 'Direkt in Goodnotes öffnen'}
                         </div>
                     </button>

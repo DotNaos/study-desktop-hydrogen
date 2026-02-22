@@ -9,11 +9,10 @@ import {
     shell,
 } from 'electron';
 import { spawn } from 'node:child_process';
-import { existsSync, promises as fs } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { migrateCredentials, PORT, store } from './config';
-import { exportNodeSaveAs, exportNodeToShareZip } from './exportDesktop';
+import { exportNodeForAction, exportNodeSaveAs } from './exportDesktop';
 import './logger';
 import { startServer, stopServer } from './server';
 import { bootstrapMoodleAuth, registerSessionPersistence } from './startupAuth';
@@ -101,15 +100,6 @@ function resolveGoodnotesAppPath(): string | null {
     }
 
     return null;
-}
-
-async function exportNodeToTemporaryPath(
-    nodeId: string,
-): Promise<{ fileCount: number; outputPath: string }> {
-    const tempRoot = await fs.mkdtemp(
-        path.join(tmpdir(), 'study-desktop-open-'),
-    );
-    return exportNodeSaveAs(nodeId, tempRoot);
 }
 
 async function openPathWithApp(
@@ -283,9 +273,9 @@ ipcMain.handle('study-sync:exportShare', async (_event, nodeId: string) => {
     }
 
     try {
-        const shareResult = await exportNodeToShareZip(nodeId);
+        const shareResult = await exportNodeForAction(nodeId);
         const shareMenu = new ShareMenu({
-            filePaths: [shareResult.zipPath],
+            filePaths: [shareResult.outputPath],
         });
 
         shareMenu.popup({
@@ -337,7 +327,7 @@ ipcMain.handle('study-sync:exportOpenWith', async (_event, nodeId: string) => {
         }
 
         const appPath = appPicker.filePaths[0];
-        const exportResult = await exportNodeToTemporaryPath(nodeId);
+        const exportResult = await exportNodeForAction(nodeId);
         await openPathWithApp(appPath, exportResult.outputPath);
 
         return {
@@ -384,7 +374,7 @@ ipcMain.handle(
         }
 
         try {
-            const exportResult = await exportNodeToTemporaryPath(nodeId);
+            const exportResult = await exportNodeForAction(nodeId);
             await openPathWithApp(goodnotesPath, exportResult.outputPath);
 
             return {
