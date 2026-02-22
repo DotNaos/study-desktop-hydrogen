@@ -3,8 +3,41 @@ import type { ExportMode } from './types';
 
 function GoodnotesIcon(props: React.SVGProps<SVGSVGElement>) {
     return (
-        <svg viewBox="0 0 1024 1024" fill="currentColor" {...props}>
-            <path d="M722.61,165.8H300.73c-74.49,0-134.88,60.38-134.88,134.88v422.65 c0,74.49,60.38,134.88,134.88,134.88h421.88c74.49,0,134.88-60.38,134.88-134.88V300.67C857.49,226.18,797.1,165.8,722.61,165.8z M735.61,714.4c0,5.65-4.58,10.23-10.23,10.23H297.98c-5.65,0-10.23-4.58-10.23-10.23v-12.87c0-5.65,4.58-10.23,10.23-10.23h427.39 c5.65,0,10.23,4.58,10.23,10.23V714.4z M735.61,568.07c0,5.65-4.58,10.23-10.23,10.23H297.98c-5.65,0-10.23-4.58-10.23-10.23V555.2 c0-5.65,4.58-10.23,10.23-10.23h427.39c5.65,0,10.23,4.58,10.23,10.23V568.07z M735.61,421.75c0,5.65-4.58,10.23-10.23,10.23H297.98 c-5.65,0-10.23-4.58-10.23-10.23v-12.87c0-5.65,4.58-10.23,10.23-10.23h427.39c5.65,0,10.23,4.58,10.23,10.23V421.75z" />
+        <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            {...props}
+        >
+            <rect
+                x="2"
+                y="2"
+                width="20"
+                height="20"
+                rx="4"
+                stroke="currentColor"
+                strokeWidth="1.5"
+            />
+            <path
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                d="M6 8h8 M6 12h5"
+            />
+            <path
+                fill="currentColor"
+                d="M14 6l4 10-2.5.5zm1 10.5c0 2-3 2-4 2s-3-1-3-3"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+            />
+            <path d="M14 6l4 10-2.5.5z" fill="currentColor" />
+            <path
+                d="M8 15.5c0 2 3 2 4 2s3-1 3-3"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+            />
         </svg>
     );
 }
