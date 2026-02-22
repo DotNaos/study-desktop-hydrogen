@@ -96,30 +96,23 @@ export function ExplorerTree({
               ? 'text-success'
               : 'text-neutral-500';
 
-        let radiusClass = 'rounded-lg';
-        if (isHovered && !selected) {
-            if (isHoverRoot && isHoverLast) {
-                radiusClass = 'rounded-[8px]';
-            } else if (isHoverRoot) {
-                radiusClass = 'rounded-t-[8px] rounded-b-none';
-            } else if (isHoverLast) {
-                radiusClass = 'rounded-b-[8px] rounded-t-none';
-            } else {
-                radiusClass = 'rounded-none';
-            }
-        } else if (!isHovered) {
-            radiusClass = 'rounded-lg';
-        } else {
-            radiusClass = '';
-        }
-
         const markCompletedLabel = folder ? 'Alle erledigt' : 'Erledigt';
         const markUncompletedLabel = folder
             ? 'Alles nicht erledigt'
             : 'Nicht erledigt';
 
         return (
-            <div key={node.id}>
+            <div key={node.id} className="relative">
+                {isHoverRoot && (
+                    <div
+                        className={cn(
+                            'absolute inset-y-0 left-2 right-2 rounded-lg pointer-events-none z-0',
+                            hoverInfo.type === 'done'
+                                ? 'bg-green-500/10'
+                                : 'bg-red-500/10',
+                        )}
+                    />
+                )}
                 <ContextMenu>
                     <ContextMenuTrigger asChild>
                         <button
@@ -132,19 +125,10 @@ export function ExplorerTree({
                                 }
                             }}
                             className={cn(
-                                'flex items-center gap-2 px-2 py-1.5 text-left text-sm transition-all mx-2 w-[calc(100%-16px)] outline-none focus-visible:ring-2 focus-visible:ring-white/50',
-                                radiusClass,
+                                'relative z-10 flex items-center gap-2 px-2 py-1.5 text-left text-sm transition-all mx-2 w-[calc(100%-16px)] outline-none focus-visible:ring-2 focus-visible:ring-white/50 rounded-lg',
                                 selected
                                     ? 'bg-white/10 text-white font-medium shadow-sm'
                                     : 'text-neutral-300 hover:bg-white/5 hover:text-neutral-100',
-                                isHovered &&
-                                    !selected &&
-                                    cn(
-                                        'shadow-none',
-                                        hoverInfo.type === 'done'
-                                            ? 'bg-green-500/10 text-green-400/90'
-                                            : 'bg-red-500/10 text-red-400/90',
-                                    ),
                             )}
                             style={{ paddingLeft: `${depth * 14 + 8}px` }}
                         >
@@ -230,7 +214,7 @@ export function ExplorerTree({
                 </ContextMenu>
 
                 {folder && expanded && hasChildren && (
-                    <div>
+                    <div className="relative z-10">
                         {node.children?.map((child) =>
                             renderNode(child, depth + 1),
                         )}
