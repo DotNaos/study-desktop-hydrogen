@@ -13,7 +13,7 @@ import type { ExportMode } from './types';
 
 function GoodnotesIcon(props: React.SVGProps<SVGSVGElement>) {
     return (
-        <svg viewBox="70 200 125 140" fill="none" {...props}>
+        <svg viewBox="65 190 135 150" fill="none" {...props}>
             <g>
                 <path
                     fill="#FFFFFF"
