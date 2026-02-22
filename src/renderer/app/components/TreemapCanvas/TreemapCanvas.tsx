@@ -22,6 +22,7 @@ function PreviewGrid({
     maxDepth: number;
     currentDepth?: number;
     showProgressFill?: boolean;
+    previewAction?: 'complete' | 'uncomplete' | null;
 }) {
     const containerRef = useRef<HTMLDivElement>(null);
     const [size, setSize] = useState({ width: 0, height: 0 });
@@ -154,9 +155,14 @@ function PreviewGrid({
                                 style={{ borderRadius }}
                             >
                                 <div
-                                    className="absolute bottom-0 left-0 w-full bg-green-500/70 transition-all"
+                                    className={cn(
+                                        'absolute bottom-0 left-0 w-full transition-all',
+                                        previewAction === 'uncomplete'
+                                            ? 'bg-red-500/70'
+                                            : 'bg-green-500/70',
+                                    )}
                                     style={{
-                                        height: `${progress}%`,
+                                        height: `${previewAction === 'complete' ? 100 : progress}%`,
                                         opacity:
                                             showProgressFill && isDeepestLayer
                                                 ? 1
@@ -181,6 +187,7 @@ function PreviewGrid({
                                                 showProgressFill={
                                                     showProgressFill
                                                 }
+                                                previewAction={previewAction}
                                             />
                                         </div>
                                     )}
@@ -558,7 +565,7 @@ export function TreemapCanvas({
                                         isHoveredForComplete &&
                                             'border-green-500/80 shadow-[0_0_16px_rgba(34,197,94,0.4)] bg-green-500/10',
                                         isHoveredForUncomplete &&
-                                            'border-rose-500/80 shadow-[0_0_16px_rgba(244,63,94,0.4)] bg-rose-500/10',
+                                            'border-red-500/80 shadow-[0_0_16px_rgba(239,68,68,0.4)] bg-red-500/10',
                                     )}
                                     style={{
                                         width: cellSize,
@@ -569,9 +576,14 @@ export function TreemapCanvas({
                                 >
                                     {/* Progress fill - hidden on parent, shown on children via PreviewGrid */}
                                     <div
-                                        className="absolute bottom-0 left-0 w-full bg-green-500/70 transition-all duration-500 pointer-events-none"
+                                        className={cn(
+                                            'absolute bottom-0 left-0 w-full transition-all duration-500 pointer-events-none',
+                                            isHoveredForUncomplete
+                                                ? 'bg-red-500/70'
+                                                : 'bg-green-500/70',
+                                        )}
                                         style={{
-                                            height: `${progress}%`,
+                                            height: `${isHoveredForComplete ? 100 : progress}%`,
                                             opacity: isLeaf ? 1 : 0,
                                         }}
                                     />
@@ -589,6 +601,13 @@ export function TreemapCanvas({
                                                 getProgress={getProgress}
                                                 maxDepth={maxPreviewDepth}
                                                 showProgressFill={true}
+                                                previewAction={
+                                                    isHoveredForComplete
+                                                        ? 'complete'
+                                                        : isHoveredForUncomplete
+                                                          ? 'uncomplete'
+                                                          : null
+                                                }
                                             />
                                         </div>
                                     )}
@@ -611,7 +630,7 @@ export function TreemapCanvas({
                                 <ContextMenuTrigger asChild>
                                     {cellContent}
                                 </ContextMenuTrigger>
-                                <ContextMenuContent className="bg-neutral-900 border-neutral-700">
+                                <ContextMenuContent className="bg-neutral-900 border-neutral-700 data-[state=closed]:pointer-events-none">
                                     <ContextMenuItem
                                         disabled={!onToggleCompletion}
                                         onClick={() => {
@@ -649,12 +668,12 @@ export function TreemapCanvas({
                                         onMouseLeave={() =>
                                             setHoveredAction(null)
                                         }
-                                        className="text-neutral-200 focus:bg-neutral-800 focus:text-rose-400 focus:bg-rose-500/10"
+                                        className="text-neutral-200 focus:bg-neutral-800 focus:text-red-400 focus:bg-red-500/10"
                                     >
                                         <X className="w-4 h-4 mr-2" />
                                         {isLeaf
-                                            ? 'Unerledigt'
-                                            : 'Alle unerledigt'}
+                                            ? 'Nicht erledigt'
+                                            : 'Alles nicht erledigt'}
                                     </ContextMenuItem>
                                     <ContextMenuItem
                                         disabled={!onExport}

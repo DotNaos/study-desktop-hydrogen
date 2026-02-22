@@ -80,7 +80,7 @@ export function ExplorerTree({
                 expandedIds.has(id),
             );
             setHoverInfo({ ids: new Set(ids), rootId: node.id, lastId, type });
-        };,
+        },
         [clearHover],
     );
 
