@@ -2,8 +2,6 @@ import { Dropdown, Label, Radio, RadioGroup, Switch } from '@heroui/react';
 import { createFileRoute } from '@tanstack/react-router';
 import {
     ArrowDown,
-    ArrowLeftFromLine,
-    ArrowRightFromLine,
     ArrowUp,
     ArrowUpDown,
     ExternalLink,
@@ -12,6 +10,8 @@ import {
     List,
     Loader2,
     LogOut,
+    Maximize,
+    Minimize,
     SlidersHorizontal,
 } from 'lucide-react';
 import type { FormEvent, PointerEvent as ReactPointerEvent } from 'react';
@@ -47,6 +47,7 @@ export const Route = createFileRoute('/')({
 });
 
 type CompletionSort = 'none' | 'completed-first' | 'completed-last';
+type FocusedPanel = 'explorer' | 'viewer';
 
 const EXPLORER_VIEW_SETTINGS_STORAGE_KEY =
     'study-desktop-explorer-view-settings';
@@ -139,6 +140,7 @@ function Home() {
         useState(false);
     const [explorerHoverPreviewWidthPx, setExplorerHoverPreviewWidthPx] =
         useState(520);
+    const [focusedPanel, setFocusedPanel] = useState<FocusedPanel>('explorer');
     const explorerHoverPreviewResizeSessionRef = useRef<{
         pointerId: number;
         startX: number;
@@ -277,6 +279,14 @@ function Home() {
         hasViewerContent && panelMode === 'viewer-only';
     const showExplorerHoverPreview =
         canShowExplorerHoverPreview && isExplorerHoverPreviewOpen;
+    const showExplorerPanelToggle = Boolean(
+        selectedResource &&
+            (panelMode === 'explorer-only' ||
+                (panelMode === 'split' && focusedPanel === 'explorer')),
+    );
+    const showViewerPanelToggle =
+        panelMode === 'viewer-only' ||
+        (panelMode === 'split' && focusedPanel === 'viewer');
 
     const clampExplorerHoverPreviewWidth = useCallback(
         (nextWidth: number) => {
@@ -293,10 +303,21 @@ function Home() {
     const openResource = useCallback(
         (resourceId: string) => {
             setSelectedResourceId(resourceId);
+            setFocusedPanel('viewer');
             setPanelMode((prev) => (prev === 'explorer-only' ? 'split' : prev));
         },
         [setPanelMode],
     );
+
+    useEffect(() => {
+        if (panelMode === 'explorer-only') {
+            setFocusedPanel('explorer');
+            return;
+        }
+        if (panelMode === 'viewer-only') {
+            setFocusedPanel('viewer');
+        }
+    }, [panelMode]);
 
     const dismissToast = useCallback((id: string) => {
         setToasts((prev) => prev.filter((toast) => toast.id !== id));
@@ -1150,6 +1171,7 @@ function Home() {
                                   }
                                 : { width: `${explorerWidthPct}%` }
                         }
+                        onPointerDown={() => setFocusedPanel('explorer')}
                         onPointerEnter={
                             canShowExplorerHoverPreview
                                 ? openExplorerHoverPreview
@@ -1187,7 +1209,7 @@ function Home() {
                             </div>
                             <div className="flex items-center gap-1.5">
                                 {/* Split toggle */}
-                                {selectedResource && (
+                                {showExplorerPanelToggle && (
                                     <button
                                         title={
                                             panelMode === 'explorer-only'
@@ -1205,9 +1227,9 @@ function Home() {
                                         className="w-7 h-7 flex items-center justify-center rounded-full text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-all"
                                     >
                                         {panelMode === 'explorer-only' ? (
-                                            <ArrowLeftFromLine className="h-4 w-4" />
+                                            <Minimize className="h-4 w-4" />
                                         ) : (
-                                            <ArrowRightFromLine className="h-4 w-4" />
+                                            <Maximize className="h-4 w-4" />
                                         )}
                                     </button>
                                 )}
@@ -1346,6 +1368,7 @@ function Home() {
                     {hasViewerContent && viewerSrc && selectedResource && (
                         <section
                             style={{ width: `${viewerWidthPct}%` }}
+                            onPointerDown={() => setFocusedPanel('viewer')}
                             className={cn(
                                 'h-full min-w-0 flex flex-col overflow-hidden',
                                 shouldAnimatePanels &&
@@ -1355,29 +1378,31 @@ function Home() {
                         >
                             {/* PDF toolbar — ghost pill buttons */}
                             <div className="h-11 border-b border-neutral-800 px-3 flex items-center gap-2">
-                                <button
-                                    type="button"
-                                    title={
-                                        panelMode === 'viewer-only'
-                                            ? 'Split View'
-                                            : 'PDF fullscreen'
-                                    }
-                                    onClick={() => {
-                                        stopResize();
-                                        setPanelMode((prev) =>
-                                            prev === 'viewer-only'
-                                                ? 'split'
-                                                : 'viewer-only',
-                                        );
-                                    }}
-                                    className="w-7 h-7 flex items-center justify-center rounded-full text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-all shrink-0"
-                                >
-                                    {panelMode === 'viewer-only' ? (
-                                        <ArrowRightFromLine className="h-4 w-4" />
-                                    ) : (
-                                        <ArrowLeftFromLine className="h-4 w-4" />
-                                    )}
-                                </button>
+                                {showViewerPanelToggle && (
+                                    <button
+                                        type="button"
+                                        title={
+                                            panelMode === 'viewer-only'
+                                                ? 'Split View'
+                                                : 'PDF fullscreen'
+                                        }
+                                        onClick={() => {
+                                            stopResize();
+                                            setPanelMode((prev) =>
+                                                prev === 'viewer-only'
+                                                    ? 'split'
+                                                    : 'viewer-only',
+                                            );
+                                        }}
+                                        className="w-7 h-7 flex items-center justify-center rounded-full text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-all shrink-0"
+                                    >
+                                        {panelMode === 'viewer-only' ? (
+                                            <Minimize className="h-4 w-4" />
+                                        ) : (
+                                            <Maximize className="h-4 w-4" />
+                                        )}
+                                    </button>
+                                )}
                                 <div className="flex-1" />
                                 <span className="max-w-[50%] truncate text-sm text-neutral-200 text-right">
                                     {selectedResource.name}

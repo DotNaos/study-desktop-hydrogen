@@ -28,15 +28,43 @@ export function UpdateStatusCard({
         return null;
     }
 
-    if (
-        state.stage === 'idle' ||
-        state.stage === 'not-available' ||
-        state.stage === 'unsupported'
-    ) {
+    if (state.stage === 'unsupported') {
         return null;
     }
 
     const progress = formatPercent(state.progressPercent);
+    const isCompactIdleCard =
+        state.stage === 'idle' || state.stage === 'not-available';
+
+    if (isCompactIdleCard) {
+        return (
+            <div className="fixed right-4 bottom-20 z-50 w-[min(340px,calc(100vw-2rem))] rounded-xl border border-neutral-700/80 bg-neutral-950/88 p-3 shadow-2xl backdrop-blur-md">
+                <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-neutral-700/80 bg-neutral-900/80 text-neutral-300">
+                        <RefreshCw className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <div className="text-sm font-medium text-neutral-100">
+                            Updates
+                        </div>
+                        <div className="mt-0.5 text-xs text-neutral-400">
+                            {state.stage === 'not-available'
+                                ? `Aktuell auf v${state.currentVersion}`
+                                : `Installiert: v${state.currentVersion}`}
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onCheckForUpdates}
+                        disabled={actionBusy === 'check'}
+                        className="shrink-0 rounded-lg border border-neutral-700 bg-neutral-900 px-2.5 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-800 disabled:opacity-50"
+                    >
+                        {actionBusy === 'check' ? 'Prüfe...' : 'Prüfen'}
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="fixed right-4 bottom-20 z-50 w-[min(420px,calc(100vw-2rem))] rounded-xl border border-neutral-700/80 bg-neutral-950/92 p-3 shadow-2xl backdrop-blur-md">

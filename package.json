@@ -1,6 +1,6 @@
 {
   "name": "study-desktop-hydrogen",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "productName": "Study Desktop",
   "description": "Local Electron desktop app for Study Sync + Study Web",
   "main": "./out/main/index.js",
