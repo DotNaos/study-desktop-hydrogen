@@ -135,29 +135,58 @@ async function addNodeToArchive(
     node: SyncNode,
     archive: archiver.Archiver,
     basePath: string,
+    usedNames: Set<string>,
 ): Promise<number> {
     if (isFolderNode(node)) {
-        const folderName = sanitizeName(node.name);
-        const folderPath = basePath
+        let folderName = sanitizeName(node.name);
+
+        // Deduplicate folder name
+        let folderPath = basePath
             ? path.posix.join(basePath, folderName)
             : folderName;
+        let suffix = 1;
+        while (usedNames.has(folderPath.toLowerCase())) {
+            folderName = `${sanitizeName(node.name)} (${suffix})`;
+            folderPath = basePath
+                ? path.posix.join(basePath, folderName)
+                : folderName;
+            suffix++;
+        }
+        usedNames.add(folderPath.toLowerCase());
+
         archive.append('', { name: `${folderPath}/` });
 
         let fileCount = 0;
         const children = await getNodeChildren(node);
+        const childUsedNames = new Set<string>(); // Scoped to this folder
         for (const child of children) {
-            fileCount += await addNodeToArchive(child, archive, folderPath);
+            fileCount += await addNodeToArchive(
+                child,
+                archive,
+                folderPath,
+                childUsedNames,
+            );
         }
         return fileCount;
     }
 
     const { data, extension } = await getResourceData(node);
-    const fileName = withExtension(node.name, extension);
-    const filePath = basePath ? path.posix.join(basePath, fileName) : fileName;
+    let fileName = withExtension(node.name, extension);
+
+    // Deduplicate file name
+    let filePath = basePath ? path.posix.join(basePath, fileName) : fileName;
+    let suffix = 1;
+    while (usedNames.has(filePath.toLowerCase())) {
+        const nameWithoutExt = sanitizeName(node.name);
+        fileName = withExtension(`${nameWithoutExt} (${suffix})`, extension);
+        filePath = basePath ? path.posix.join(basePath, fileName) : fileName;
+        suffix++;
+    }
+    usedNames.add(filePath.toLowerCase());
+
     archive.append(data, { name: filePath });
     return 1;
 }
-
 async function createZipForNode(
     node: SyncNode,
     zipPath: string,
@@ -175,7 +204,12 @@ async function createZipForNode(
 
     archive.pipe(output);
 
-    const fileCount = await addNodeToArchive(node, archive, '');
+    const fileCount = await addNodeToArchive(
+        node,
+        archive,
+        '',
+        new Set<string>(),
+    );
     await archive.finalize();
     await completion;
 
