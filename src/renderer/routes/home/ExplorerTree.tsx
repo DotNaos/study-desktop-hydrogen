@@ -185,7 +185,7 @@ export function ExplorerTree({
                             <div className="flex-1" />
                         </button>
                     </ContextMenuTrigger>
-                    <ContextMenuContent className="bg-neutral-900 border-neutral-700 text-neutral-100">
+                    <ContextMenuContent className="bg-neutral-900 border-neutral-700 text-neutral-100 data-[state=closed]:pointer-events-none">
                         <ContextMenuItem
                             disabled={completed}
                             onClick={() => onPersistCompletion(node, true)}
