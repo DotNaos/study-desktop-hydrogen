@@ -95,7 +95,7 @@ export function ExplorerTree({
                                     : 'text-neutral-300 hover:bg-white/5 hover:text-neutral-100',
                                 isHovered &&
                                     !selected &&
-                                    'bg-green-500/5 text-green-400/90 shadow-[inset_1px_0_0_0_rgba(34,197,94,0.4)]',
+                                    'bg-green-500/10 text-green-400/90',
                             )}
                             style={{ paddingLeft: `${depth * 14 + 8}px` }}
                         >
