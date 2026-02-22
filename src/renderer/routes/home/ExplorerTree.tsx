@@ -9,7 +9,7 @@ import {
     X,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
     ContextMenu,
     ContextMenuContent,
@@ -38,6 +38,13 @@ interface ExplorerTreeProps {
     onOpenExportDialog: (node: ExplorerNode) => void;
 }
 
+const emptyHoverInfo = {
+    ids: new Set<string>(),
+    rootId: null as string | null,
+    lastId: null as string | null,
+    type: null as 'done' | 'unmark' | null,
+};
+
 export function ExplorerTree({
     roots,
     completionMap,
@@ -49,22 +56,22 @@ export function ExplorerTree({
     onPersistCompletion,
     onOpenExportDialog,
 }: ExplorerTreeProps) {
-    const [hoverInfo, setHoverInfo] = useState<{
-        ids: Set<string>;
-        rootId: string | null;
-        lastId: string | null;
-        type: 'done' | 'unmark' | null;
-    }>({ ids: new Set(), rootId: null, lastId: null, type: null });
+    const [hoverInfo, setHoverInfo] = useState(emptyHoverInfo);
+    const menuOpenRef = useRef(false);
+
+    const clearHover = useCallback(() => {
+        setHoverInfo(emptyHoverInfo);
+    }, []);
 
     const handleActionHover = useCallback(
         (node: ExplorerNode, type: 'done' | 'unmark' | null) => {
+            // Guard: ignore hover events when the menu is closed (exit animation race)
+            if (!menuOpenRef.current) {
+                return;
+            }
+
             if (!type) {
-                setHoverInfo({
-                    ids: new Set(),
-                    rootId: null,
-                    lastId: null,
-                    type: null,
-                });
+                clearHover();
                 return;
             }
 
@@ -73,8 +80,18 @@ export function ExplorerTree({
                 expandedIds.has(id),
             );
             setHoverInfo({ ids: new Set(ids), rootId: node.id, lastId, type });
+        };,
+        [clearHover],
+    );
+
+    const handleMenuOpenChange = useCallback(
+        (open: boolean) => {
+            menuOpenRef.current = open;
+            if (!open) {
+                clearHover();
+            }
         },
-        [],
+        [clearHover],
     );
 
     const renderNode = (node: ExplorerNode, depth: number): ReactNode => {
@@ -113,13 +130,7 @@ export function ExplorerTree({
                         )}
                     />
                 )}
-                <ContextMenu
-                    onOpenChange={(open) => {
-                        if (!open) {
-                            handleActionHover(node, null);
-                        }
-                    }}
-                >
+                <ContextMenu onOpenChange={handleMenuOpenChange}>
                     <ContextMenuTrigger asChild>
                         <button
                             type="button"
