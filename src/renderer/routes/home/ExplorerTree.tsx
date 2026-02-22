@@ -122,12 +122,9 @@ export function ExplorerTree({
                                 isHovered &&
                                     !selected &&
                                     cn(
-                                        'shadow-none',
+                                        'rounded-none shadow-none',
                                         isHoverRoot && 'rounded-t-lg',
                                         isHoverLast && 'rounded-b-lg',
-                                        !isHoverRoot &&
-                                            !isHoverLast &&
-                                            'rounded-none',
                                         hoverInfo.type === 'done'
                                             ? 'bg-green-500/10 text-green-400/90'
                                             : 'bg-red-500/10 text-red-400/90',
