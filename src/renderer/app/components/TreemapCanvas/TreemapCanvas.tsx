@@ -16,6 +16,7 @@ function PreviewGrid({
     maxDepth,
     currentDepth = 0,
     showProgressFill = true,
+    previewAction = null,
 }: {
     children: Node[];
     getProgress: (node: Node) => number;
