@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+import type { UpdaterActionResult, UpdaterState } from '../shared/updater';
 
 declare global {
   interface Window {
@@ -35,6 +36,13 @@ declare global {
         fileCount?: number;
         error?: string;
       }>;
+      updaterGetState?: () => Promise<UpdaterState>;
+      updaterCheckForUpdates?: () => Promise<UpdaterActionResult>;
+      updaterDownloadUpdate?: () => Promise<UpdaterActionResult>;
+      updaterQuitAndInstall?: () => Promise<UpdaterActionResult>;
+      onUpdaterStateChange?: (
+        callback: (state: UpdaterState) => void
+      ) => () => void;
     };
   }
 }

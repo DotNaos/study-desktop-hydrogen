@@ -1,6 +1,6 @@
 {
   "name": "study-desktop-hydrogen",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "productName": "Study Desktop",
   "description": "Local Electron desktop app for Study Sync + Study Web",
   "main": "./out/main/index.js",
@@ -15,8 +15,8 @@
     "openapi:export": "tsx scripts/export-openapi.ts",
     "download:chromium": "node scripts/download-chromium.mjs",
     "build:mac": "npm run download:chromium && node ./node_modules/electron-vite/bin/electron-vite.js build && electron-builder --mac --arm64 --publish never",
-    "build:win": "npm run download:chromium && node ./node_modules/electron-vite/bin/electron-vite.js build && electron-builder --win --x64",
-    "build:linux": "node ./node_modules/electron-vite/bin/electron-vite.js build && electron-builder --linux",
+    "build:win": "npm run download:chromium && node ./node_modules/electron-vite/bin/electron-vite.js build && electron-builder --win --x64 --publish never",
+    "build:linux": "node ./node_modules/electron-vite/bin/electron-vite.js build && electron-builder --linux --publish never",
     "install:mac": "npm run build:mac && open \"dist/$(ls dist | grep -E '\\.dmg$' | head -1)\""
   },
   "dependencies": {
@@ -45,6 +45,7 @@
     "d3-hierarchy": "^3.1.2",
     "dotenv": "^16.4.7",
     "electron-store": "^8.2.0",
+    "electron-updater": "^6.8.3",
     "express": "^4.22.1",
     "lucide-react": "^0.563.0",
     "minimatch": "^10.1.1",

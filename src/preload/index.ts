@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import type { UpdaterActionResult, UpdaterState } from '../shared/updater';
 
 contextBridge.exposeInMainWorld('studySync', {
     getApiBase: () => ipcRenderer.invoke('study-sync:getApiBase') as Promise<string>,
@@ -38,4 +39,27 @@ contextBridge.exposeInMainWorld('studySync', {
             fileCount?: number;
             error?: string;
         }>,
+    updaterGetState: () =>
+        ipcRenderer.invoke('study-sync:updater:getState') as Promise<UpdaterState>,
+    updaterCheckForUpdates: () =>
+        ipcRenderer.invoke(
+            'study-sync:updater:checkForUpdates',
+        ) as Promise<UpdaterActionResult>,
+    updaterDownloadUpdate: () =>
+        ipcRenderer.invoke(
+            'study-sync:updater:downloadUpdate',
+        ) as Promise<UpdaterActionResult>,
+    updaterQuitAndInstall: () =>
+        ipcRenderer.invoke(
+            'study-sync:updater:quitAndInstall',
+        ) as Promise<UpdaterActionResult>,
+    onUpdaterStateChange: (callback: (state: UpdaterState) => void) => {
+        const listener = (_event: Electron.IpcRendererEvent, state: UpdaterState) => {
+            callback(state);
+        };
+        ipcRenderer.on('study-sync:updater:state', listener);
+        return () => {
+            ipcRenderer.removeListener('study-sync:updater:state', listener);
+        };
+    },
 });

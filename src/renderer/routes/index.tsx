@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import type { FormEvent, PointerEvent as ReactPointerEvent } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { UpdaterState } from '../../shared/updater';
 import { TreemapCanvas } from '../app/components/TreemapCanvas';
 import {
     buildInitialCompletionMap,
@@ -32,6 +33,7 @@ import { ExplorerTree } from './home/ExplorerTree';
 import { ExportDialog } from './home/ExportDialog';
 import { LoginGate } from './home/LoginGate';
 import { ToastStack, type ToastItem } from './home/ToastStack';
+import { UpdateStatusCard } from './home/UpdateStatusCard';
 import {
     type AuthStatusResponse,
     type ExportMode,
@@ -106,6 +108,10 @@ function Home() {
     const [loginPassword, setLoginPassword] = useState('');
     const [loginSubmitting, setLoginSubmitting] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
+    const [updaterState, setUpdaterState] = useState<UpdaterState | null>(null);
+    const [updaterActionBusy, setUpdaterActionBusy] = useState<
+        'check' | 'download' | 'install' | null
+    >(null);
 
     const [roots, setRoots] = useState<ExplorerNode[]>([]);
     const [treeLoading, setTreeLoading] = useState(false);
@@ -549,6 +555,43 @@ function Home() {
     }, []);
 
     useEffect(() => {
+        let disposed = false;
+        let unsubscribe: (() => void) | undefined;
+
+        const loadUpdaterState = async () => {
+            try {
+                const state = await window.studySync?.updaterGetState?.();
+                if (!disposed && state) {
+                    setUpdaterState(state);
+                }
+            } catch {
+                // noop
+            }
+        };
+
+        void loadUpdaterState();
+
+        unsubscribe = window.studySync?.onUpdaterStateChange?.((state) => {
+            if (disposed) {
+                return;
+            }
+            setUpdaterState(state);
+            if (
+                state.stage !== 'checking' &&
+                state.stage !== 'available' &&
+                state.stage !== 'downloading'
+            ) {
+                setUpdaterActionBusy(null);
+            }
+        });
+
+        return () => {
+            disposed = true;
+            unsubscribe?.();
+        };
+    }, []);
+
+    useEffect(() => {
         try {
             localStorage.setItem(
                 EXPLORER_VIEW_SETTINGS_STORAGE_KEY,
@@ -893,6 +936,57 @@ function Home() {
     const activeCompletionSortOption =
         completionSortOptions.find((option) => option.value === completionSort) ??
         completionSortOptions[0];
+
+    const triggerUpdateCheck = useCallback(async () => {
+        setUpdaterActionBusy('check');
+        try {
+            const result = await window.studySync?.updaterCheckForUpdates?.();
+            if (result && !result.ok) {
+                pushToast(
+                    result.error || 'Update-Prüfung fehlgeschlagen.',
+                    'error',
+                );
+            }
+        } catch {
+            pushToast('Update-Prüfung fehlgeschlagen.', 'error');
+        } finally {
+            setUpdaterActionBusy(null);
+        }
+    }, [pushToast]);
+
+    const triggerUpdateDownload = useCallback(async () => {
+        setUpdaterActionBusy('download');
+        try {
+            const result = await window.studySync?.updaterDownloadUpdate?.();
+            if (result && !result.ok) {
+                pushToast(
+                    result.error || 'Update-Download fehlgeschlagen.',
+                    'error',
+                );
+                setUpdaterActionBusy(null);
+            }
+        } catch {
+            pushToast('Update-Download fehlgeschlagen.', 'error');
+            setUpdaterActionBusy(null);
+        }
+    }, [pushToast]);
+
+    const triggerUpdateInstall = useCallback(async () => {
+        setUpdaterActionBusy('install');
+        try {
+            const result = await window.studySync?.updaterQuitAndInstall?.();
+            if (result && !result.ok) {
+                pushToast(
+                    result.error || 'Update konnte nicht gestartet werden.',
+                    'error',
+                );
+                setUpdaterActionBusy(null);
+            }
+        } catch {
+            pushToast('Update konnte nicht gestartet werden.', 'error');
+            setUpdaterActionBusy(null);
+        }
+    }, [pushToast]);
 
     if (authLoading || !apiBase) {
         return (
@@ -1336,6 +1430,13 @@ function Home() {
                     onClose={() => setExportNode(null)}
                 />
             )}
+            <UpdateStatusCard
+                state={updaterState}
+                actionBusy={updaterActionBusy}
+                onCheckForUpdates={triggerUpdateCheck}
+                onDownloadUpdate={triggerUpdateDownload}
+                onRestartToUpdate={triggerUpdateInstall}
+            />
             <ToastStack toasts={toasts} onDismiss={dismissToast} />
         </div>
     );

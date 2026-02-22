@@ -25,6 +25,9 @@ mac:
         - target: dmg
           arch:
               - arm64
+        - target: zip
+          arch:
+              - arm64
 win:
     target:
         - target: nsis
@@ -35,3 +38,9 @@ linux:
         - target: AppImage
           arch:
               - x64
+publish:
+    provider: github
+    owner: DotNaos
+    repo: study-desktop-hydrogen
+    releaseType: release
+    vPrefixedTagName: true

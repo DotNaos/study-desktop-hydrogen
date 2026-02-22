@@ -8,9 +8,11 @@ import {
     ShareMenu,
     shell,
 } from 'electron';
+import { autoUpdater } from 'electron-updater';
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+import type { UpdaterActionResult, UpdaterState } from '../shared/updater';
 import { migrateCredentials, PORT, store } from './config';
 import { exportNodeForAction, exportNodeSaveAs } from './exportDesktop';
 import './logger';
@@ -36,6 +38,219 @@ if (process.versions?.electron) {
 }
 
 let mainWindow: BrowserWindow | null = null;
+const UPDATER_STATE_CHANNEL = 'study-sync:updater:state';
+let updaterInitialized = false;
+let updaterCheckInFlight: Promise<void> | null = null;
+let updaterState: UpdaterState = {
+    enabled: false,
+    stage: 'unsupported',
+    currentVersion: app.getVersion(),
+    latestVersion: null,
+    progressPercent: null,
+    bytesPerSecond: null,
+    transferredBytes: null,
+    totalBytes: null,
+    message: 'Auto-Update ist nur in der installierten App verfügbar.',
+    error: null,
+    checkedAt: null,
+};
+
+function sendUpdaterState(targetWindow?: BrowserWindow | null): void {
+    const window = targetWindow ?? mainWindow;
+    if (!window || window.isDestroyed()) {
+        return;
+    }
+    window.webContents.send(UPDATER_STATE_CHANNEL, updaterState);
+}
+
+function setUpdaterState(patch: Partial<UpdaterState>): void {
+    updaterState = {
+        ...updaterState,
+        ...patch,
+    };
+    sendUpdaterState();
+}
+
+function supportsAutoUpdatesOnPlatform(): boolean {
+    return process.platform === 'darwin' || process.platform === 'win32';
+}
+
+function isUpdaterEnabled(): boolean {
+    return updaterState.enabled && supportsAutoUpdatesOnPlatform() && app.isPackaged;
+}
+
+function toUpdaterErrorMessage(error: unknown): string {
+    if (error instanceof Error) {
+        return error.message;
+    }
+    return String(error);
+}
+
+async function checkForAppUpdates(reason: 'startup' | 'manual'): Promise<void> {
+    if (!isUpdaterEnabled()) {
+        return;
+    }
+    if (updaterCheckInFlight) {
+        await updaterCheckInFlight;
+        return;
+    }
+
+    updaterCheckInFlight = (async () => {
+        try {
+            if (reason === 'manual') {
+                setUpdaterState({
+                    stage: 'checking',
+                    message: 'Prüfe auf Updates...',
+                    error: null,
+                });
+            }
+            await autoUpdater.checkForUpdates();
+        } catch (error) {
+            const message = toUpdaterErrorMessage(error);
+            logger.error('Auto-updater check failed', { error: message });
+            setUpdaterState({
+                stage: 'error',
+                error: message,
+                message: 'Update-Prüfung fehlgeschlagen.',
+                checkedAt: Date.now(),
+            });
+        } finally {
+            updaterCheckInFlight = null;
+        }
+    })();
+
+    await updaterCheckInFlight;
+}
+
+function initializeAutoUpdater(): void {
+    if (updaterInitialized) {
+        return;
+    }
+    updaterInitialized = true;
+
+    if (!app.isPackaged) {
+        setUpdaterState({
+            enabled: false,
+            stage: 'unsupported',
+            message: 'Auto-Update ist im Dev-Modus deaktiviert.',
+            error: null,
+        });
+        return;
+    }
+
+    if (!supportsAutoUpdatesOnPlatform()) {
+        setUpdaterState({
+            enabled: false,
+            stage: 'unsupported',
+            message: 'Auto-Update wird auf dieser Plattform aktuell nicht unterstützt.',
+            error: null,
+        });
+        return;
+    }
+
+    autoUpdater.autoDownload = true;
+    autoUpdater.autoInstallOnAppQuit = true;
+    autoUpdater.allowPrerelease = false;
+    try {
+        autoUpdater.logger = logger as any;
+    } catch {
+        // noop
+    }
+
+    autoUpdater.on('checking-for-update', () => {
+        setUpdaterState({
+            enabled: true,
+            stage: 'checking',
+            error: null,
+            message: 'Prüfe auf Updates...',
+            checkedAt: Date.now(),
+        });
+    });
+
+    autoUpdater.on('update-available', (info) => {
+        setUpdaterState({
+            enabled: true,
+            stage: 'available',
+            latestVersion: info.version ?? null,
+            error: null,
+            message: `Version ${info.version ?? 'neu'} verfügbar. Download startet...`,
+            progressPercent: null,
+            bytesPerSecond: null,
+            transferredBytes: null,
+            totalBytes: null,
+            checkedAt: Date.now(),
+        });
+    });
+
+    autoUpdater.on('update-not-available', (info) => {
+        setUpdaterState({
+            enabled: true,
+            stage: 'not-available',
+            latestVersion: info.version ?? null,
+            error: null,
+            message: 'App ist aktuell.',
+            progressPercent: null,
+            bytesPerSecond: null,
+            transferredBytes: null,
+            totalBytes: null,
+            checkedAt: Date.now(),
+        });
+    });
+
+    autoUpdater.on('download-progress', (progress) => {
+        setUpdaterState({
+            enabled: true,
+            stage: 'downloading',
+            error: null,
+            message: 'Update wird heruntergeladen...',
+            progressPercent:
+                typeof progress.percent === 'number'
+                    ? Math.max(0, Math.min(100, progress.percent))
+                    : null,
+            bytesPerSecond:
+                typeof progress.bytesPerSecond === 'number'
+                    ? progress.bytesPerSecond
+                    : null,
+            transferredBytes:
+                typeof progress.transferred === 'number'
+                    ? progress.transferred
+                    : null,
+            totalBytes:
+                typeof progress.total === 'number' ? progress.total : null,
+        });
+    });
+
+    autoUpdater.on('update-downloaded', (info) => {
+        setUpdaterState({
+            enabled: true,
+            stage: 'downloaded',
+            latestVersion: info.version ?? null,
+            error: null,
+            message: `Version ${info.version ?? 'neu'} wurde geladen.`,
+            progressPercent: 100,
+            checkedAt: Date.now(),
+        });
+    });
+
+    autoUpdater.on('error', (error) => {
+        const message = toUpdaterErrorMessage(error);
+        logger.error('Auto-updater error', { error: message });
+        setUpdaterState({
+            enabled: true,
+            stage: 'error',
+            error: message,
+            message: 'Update fehlgeschlagen.',
+            checkedAt: Date.now(),
+        });
+    });
+
+    setUpdaterState({
+        enabled: true,
+        stage: 'idle',
+        message: null,
+        error: null,
+    });
+}
 
 function getRuntimeIconCandidatePaths(iconRelativePath: string): string[] {
     return [
@@ -157,6 +372,10 @@ function createMainWindow(iconPath?: string): BrowserWindow {
         void window.loadFile(path.join(__dirname, '../renderer/index.html'));
     }
 
+    window.webContents.on('did-finish-load', () => {
+        sendUpdaterState(window);
+    });
+
     return window;
 }
 
@@ -172,6 +391,8 @@ app.whenReady().then(async () => {
     void bootstrapMoodleAuth();
 
     mainWindow = createMainWindow(runtimeIconPath);
+    initializeAutoUpdater();
+    void checkForAppUpdates('startup');
 
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {
@@ -193,6 +414,60 @@ app.on('window-all-closed', () => {
 ipcMain.handle('study-sync:getApiBase', () => {
     return `http://127.0.0.1:${PORT}/api`;
 });
+
+ipcMain.handle('study-sync:updater:getState', () => {
+    return updaterState;
+});
+
+ipcMain.handle(
+    'study-sync:updater:checkForUpdates',
+    async (): Promise<UpdaterActionResult> => {
+        try {
+            await checkForAppUpdates('manual');
+            return { ok: true };
+        } catch (error) {
+            return { ok: false, error: toUpdaterErrorMessage(error) };
+        }
+    },
+);
+
+ipcMain.handle(
+    'study-sync:updater:downloadUpdate',
+    async (): Promise<UpdaterActionResult> => {
+        if (!isUpdaterEnabled()) {
+            return { ok: false, error: 'Auto-Updater ist nicht verfügbar.' };
+        }
+
+        try {
+            await autoUpdater.downloadUpdate();
+            return { ok: true };
+        } catch (error) {
+            const message = toUpdaterErrorMessage(error);
+            logger.error('Manual update download failed', { error: message });
+            return { ok: false, error: message };
+        }
+    },
+);
+
+ipcMain.handle(
+    'study-sync:updater:quitAndInstall',
+    async (): Promise<UpdaterActionResult> => {
+        if (!isUpdaterEnabled()) {
+            return { ok: false, error: 'Auto-Updater ist nicht verfügbar.' };
+        }
+
+        try {
+            setImmediate(() => {
+                autoUpdater.quitAndInstall();
+            });
+            return { ok: true };
+        } catch (error) {
+            const message = toUpdaterErrorMessage(error);
+            logger.error('quitAndInstall failed', { error: message });
+            return { ok: false, error: message };
+        }
+    },
+);
 
 ipcMain.handle('study-sync:openExternal', async (_event, url: string) => {
     if (typeof url !== 'string' || !url.trim()) {
