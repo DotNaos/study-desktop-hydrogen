@@ -2,6 +2,8 @@ export interface ExplorerNode {
     id: string;
     name: string;
     type?: string;
+    fileExtension?: string;
+    mimeType?: string;
     progress?: number;
     isCompleted?: boolean;
     children?: ExplorerNode[];

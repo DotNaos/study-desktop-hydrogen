@@ -1,6 +1,6 @@
 {
   "name": "study-desktop-hydrogen",
-"version": "1.0.6",
+  "version": "1.0.7",
   "productName": "Study Desktop",
   "description": "Local Electron desktop app for Study Sync + Study Web",
   "main": "./out/main/index.js",
@@ -30,6 +30,7 @@
     "@radix-ui/react-radio-group": "^1.3.8",
     "@radix-ui/react-slider": "^1.3.6",
     "@radix-ui/react-slot": "^1.2.4",
+    "@react-symbols/icons": "^1.3.0",
     "@tanstack/react-query": "^5.90.20",
     "@tanstack/react-router": "^1.111.4",
     "@tanstack/react-router-devtools": "^1.157.11",

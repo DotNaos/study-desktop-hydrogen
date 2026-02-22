@@ -2,7 +2,6 @@ import {
     Check,
     ChevronDown,
     ChevronRight,
-    FileText,
     Folder,
     Loader2,
     X,
@@ -17,6 +16,7 @@ import {
     isFolderNode,
     type ExplorerNode,
 } from '../../app/treeUtils';
+import { FileIcon } from '../../shared/components/file-icon';
 import { cn } from '../../shared/lib/utils';
 
 interface ExplorerTreeProps {
@@ -86,6 +86,86 @@ export function ExplorerTree({
         },
         [clearHover],
     );
+
+    const normalizeFileIconExtension = (ext: string): string => {
+        switch (ext.toLowerCase()) {
+            case 'powerpoint':
+            case 'presentation':
+            case 'pptx':
+            case 'ppsx':
+            case 'potx':
+                return 'ppt';
+            case 'spreadsheet':
+            case 'xlsx':
+            case 'xlsm':
+                return 'xls';
+            case 'document':
+            case 'docx':
+            case 'docm':
+                return 'doc';
+            default:
+                return ext.toLowerCase();
+        }
+    };
+
+    const getFileIconName = (node: ExplorerNode): string => {
+        const ext =
+            typeof node.fileExtension === 'string' && node.fileExtension.trim()
+                ? normalizeFileIconExtension(
+                      node.fileExtension.trim().replace(/^\./, ''),
+                  )
+                : node.mimeType === 'application/pdf'
+                  ? 'pdf'
+                  : node.mimeType === 'text/plain'
+                    ? 'txt'
+                  : node.mimeType === 'text/markdown'
+                      ? 'md'
+                      : node.mimeType?.includes('msword')
+                        ? 'doc'
+                      : node.mimeType?.includes('wordprocessingml')
+                        ? 'doc'
+                      : node.mimeType?.includes('presentation')
+                            ? 'ppt'
+                            : node.mimeType?.includes('spreadsheet')
+                              ? 'xls'
+                              : node.mimeType?.startsWith('image/')
+                                ? normalizeFileIconExtension(
+                                      node.mimeType.split('/')[1],
+                                  )
+                                : node.mimeType?.startsWith('video/')
+                                  ? normalizeFileIconExtension(
+                                        node.mimeType.split('/')[1],
+                                    )
+                                  : node.mimeType?.startsWith('audio/')
+                                    ? normalizeFileIconExtension(
+                                          node.mimeType.split('/')[1],
+                                      )
+                                    : null;
+
+        if (!ext) {
+            return node.name;
+        }
+
+        const lowerName = node.name.toLowerCase();
+        return lowerName.endsWith(`.${ext}`) ? node.name : `${node.name}.${ext}`;
+    };
+
+    const isPowerPointLikeFile = (node: ExplorerNode): boolean => {
+        const fileExt = node.fileExtension?.trim().toLowerCase().replace(/^\./, '');
+        const mime = node.mimeType?.toLowerCase() ?? '';
+        const lowerName = node.name.toLowerCase();
+
+        return (
+            fileExt === 'ppt' ||
+            fileExt === 'pptx' ||
+            fileExt === 'powerpoint' ||
+            fileExt === 'presentation' ||
+            mime.includes('powerpoint') ||
+            mime.includes('presentationml') ||
+            lowerName.includes('powerpoint') ||
+            /\bpptx?\b/.test(lowerName)
+        );
+    };
 
     const renderNode = (node: ExplorerNode, depth: number): ReactNode => {
         const folder = isFolderNode(node);
@@ -174,11 +254,16 @@ export function ExplorerTree({
                                 )}
                             />
                         ) : (
-                            <FileText
-                                className={cn(
-                                    'h-4 w-4 shrink-0',
-                                    iconColorClass,
-                                )}
+                            <FileIcon
+                                filename={getFileIconName(node)}
+                                size={16}
+                                className="shrink-0"
+                                grayscale={Boolean(isHovered)}
+                                variant={
+                                    isPowerPointLikeFile(node)
+                                        ? 'powerpoint'
+                                        : 'default'
+                                }
                             />
                         )}
 
