@@ -13,7 +13,7 @@ import type { ExportMode } from './types';
 
 function GoodnotesIcon(props: React.SVGProps<SVGSVGElement>) {
     return (
-        <svg viewBox="50 180 200 200" fill="none" {...props}>
+        <svg viewBox="72 203 120 120" fill="none" {...props}>
             <g>
                 <path
                     fill="#FFFFFF"
@@ -198,9 +198,9 @@ export function ExportDialog({
                             type="button"
                             disabled={goodnotesDisabled}
                             onClick={onOpenGoodnotes}
-                            className="rounded-full px-5 py-2 text-sm font-medium transition-colors flex items-center gap-2 bg-[#48BEDB] text-white hover:bg-[#3ca1ba] disabled:opacity-60 border-none ml-2"
+                            className="rounded-full px-5 py-2.5 text-sm font-medium transition-colors flex items-center justify-center gap-2.5 bg-[#48BEDB] text-white hover:bg-[#3ca1ba] disabled:opacity-60 border-none ml-2 shadow-sm"
                         >
-                            <GoodnotesIcon className="h-5 w-5 -ml-1" />
+                            <GoodnotesIcon className="h-5 w-5" />
                             In GoodNotes öffnen
                             {exportMode === 'openGoodnotes' && (
                                 <Loader2 className="h-4 w-4 animate-spin text-white" />
