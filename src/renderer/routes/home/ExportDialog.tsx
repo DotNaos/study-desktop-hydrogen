@@ -77,9 +77,9 @@ function PreviewTree({
                 style={{ paddingLeft: `${depth * 1.5 + 0.5}rem` }}
             >
                 {isFolder ? (
-                    <FolderIcon className="w-5 h-5 text-blue-400 shrink-0" />
+                    <FolderIcon className="w-4 h-4 text-neutral-500 shrink-0" />
                 ) : (
-                    <PdfIcon className="w-5 h-5 shrink-0 shadow-sm" />
+                    <PdfIcon className="w-4 h-4 shrink-0 shadow-sm" />
                 )}
                 <span className="text-sm font-medium text-neutral-200 truncate group-hover:text-white transition-colors ml-0.5">
                     {node.name}
