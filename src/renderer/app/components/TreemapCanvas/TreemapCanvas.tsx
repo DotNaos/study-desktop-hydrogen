@@ -1,13 +1,8 @@
-import { Check, Home, Layers, X } from 'lucide-react';
+import { Home, Layers } from 'lucide-react';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '../../../shared/lib/utils';
 import type { Node } from '../../zoomData';
-import {
-    ContextMenu,
-    ContextMenuContent,
-    ContextMenuItem,
-    ContextMenuTrigger,
-} from '../ui/context-menu';
+import { ActionContextMenu } from '../ActionContextMenu';
 
 // Recursive preview grid component with true 1:1 aspect ratio cells
 function PreviewGrid({
@@ -627,67 +622,45 @@ export function TreemapCanvas({
                         );
 
                         return (
-                            <ContextMenu key={item.id}>
-                                <ContextMenuTrigger asChild>
-                                    {cellContent}
-                                </ContextMenuTrigger>
-                                <ContextMenuContent className="bg-neutral-900 border-neutral-700 data-[state=closed]:pointer-events-none">
-                                    <ContextMenuItem
-                                        disabled={!onToggleCompletion}
-                                        onClick={() => {
+                            <ActionContextMenu
+                                key={item.id}
+                                isFolder={!isLeaf}
+                                isCompleted={isComplete}
+                                onPersistCompletion={
+                                    onToggleCompletion
+                                        ? (c: boolean) => {
+                                              suppressNextZoomOut();
+                                              onToggleCompletion(item, c);
+                                              setHoveredAction(null);
+                                          }
+                                        : undefined
+                                }
+                                onHoverAction={(
+                                    action: 'done' | 'unmark' | null,
+                                ) =>
+                                    setHoveredAction(
+                                        action
+                                            ? {
+                                                  id: item.id,
+                                                  action:
+                                                      action === 'done'
+                                                          ? 'complete'
+                                                          : 'uncomplete',
+                                              }
+                                            : null,
+                                    )
+                                }
+                                onExport={
+                                    onExport
+                                        ? () => {
                                             suppressNextZoomOut();
-                                            onToggleCompletion?.(item, true);
-                                            setHoveredAction(null);
-                                        }}
-                                        onMouseEnter={() =>
-                                            setHoveredAction({
-                                                id: item.id,
-                                                action: 'complete',
-                                            })
+                                            onExport(item);
                                         }
-                                        onMouseLeave={() =>
-                                            setHoveredAction(null)
-                                        }
-                                        className="text-neutral-200 focus:bg-neutral-800 focus:text-green-400 focus:bg-green-500/10"
-                                    >
-                                        <Check className="w-4 h-4 mr-2" />
-                                        {isLeaf ? 'Erledigt' : 'Alle erledigt'}
-                                    </ContextMenuItem>
-                                    <ContextMenuItem
-                                        disabled={!onToggleCompletion}
-                                        onClick={() => {
-                                            suppressNextZoomOut();
-                                            onToggleCompletion?.(item, false);
-                                            setHoveredAction(null);
-                                        }}
-                                        onMouseEnter={() =>
-                                            setHoveredAction({
-                                                id: item.id,
-                                                action: 'uncomplete',
-                                            })
-                                        }
-                                        onMouseLeave={() =>
-                                            setHoveredAction(null)
-                                        }
-                                        className="text-neutral-200 focus:bg-neutral-800 focus:text-red-400 focus:bg-red-500/10"
-                                    >
-                                        <X className="w-4 h-4 mr-2" />
-                                        {isLeaf
-                                            ? 'Nicht erledigt'
-                                            : 'Alles nicht erledigt'}
-                                    </ContextMenuItem>
-                                    <ContextMenuItem
-                                        disabled={!onExport}
-                                        onClick={() => {
-                                            suppressNextZoomOut();
-                                            onExport?.(item);
-                                        }}
-                                        className="text-neutral-200 focus:bg-neutral-800 focus:text-white"
-                                    >
-                                        Exportieren...
-                                    </ContextMenuItem>
-                                </ContextMenuContent>
-                            </ContextMenu>
+                                        : undefined
+                                }
+                            >
+                                {cellContent}
+                            </ActionContextMenu>
                         );
                     })}
                 </div>

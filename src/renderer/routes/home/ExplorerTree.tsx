@@ -5,18 +5,11 @@ import {
     FileText,
     Folder,
     Loader2,
-    Upload,
     X,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useCallback, useRef, useState } from 'react';
-import {
-    ContextMenu,
-    ContextMenuContent,
-    ContextMenuItem,
-    ContextMenuSeparator,
-    ContextMenuTrigger,
-} from '../../app/components/ui/context-menu';
+import { ActionContextMenu } from '../../app/components/ActionContextMenu';
 import {
     collectAllIds,
     getLastVisibleDescendantId,
@@ -130,105 +123,82 @@ export function ExplorerTree({
                         )}
                     />
                 )}
-                <ContextMenu onOpenChange={handleMenuOpenChange}>
-                    <ContextMenuTrigger asChild>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                if (folder) {
-                                    onToggleExpanded(node.id);
-                                } else {
-                                    onOpenResource(node.id);
-                                }
-                            }}
-                            className={cn(
-                                'relative z-10 flex items-center gap-2 px-2 py-1.5 text-left text-sm transition-all mx-2 w-[calc(100%-16px)] outline-none focus-visible:ring-2 focus-visible:ring-white/50 rounded-lg',
-                                selected
-                                    ? 'bg-white/10 text-white font-medium shadow-sm'
-                                    : 'text-neutral-300 hover:bg-white/5 hover:text-neutral-100',
-                            )}
-                            style={{ paddingLeft: `${depth * 14 + 8}px` }}
-                        >
-                            {folder ? (
-                                hasChildren ? (
-                                    expanded ? (
-                                        <ChevronDown className="h-4 w-4 text-neutral-500 shrink-0" />
-                                    ) : (
-                                        <ChevronRight className="h-4 w-4 text-neutral-500 shrink-0" />
-                                    )
+                <ActionContextMenu
+                    isFolder={folder}
+                    isCompleted={completed}
+                    onPersistCompletion={(c: boolean) =>
+                        onPersistCompletion(node, c)
+                    }
+                    onHoverAction={(action: 'done' | 'unmark' | null) =>
+                        handleActionHover(node, action)
+                    }
+                    onExport={() => onOpenExportDialog(node)}
+                    onOpenChange={handleMenuOpenChange}
+                >
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (folder) {
+                                onToggleExpanded(node.id);
+                            } else {
+                                onOpenResource(node.id);
+                            }
+                        }}
+                        className={cn(
+                            'relative z-10 flex items-center gap-2 px-2 py-1.5 text-left text-sm transition-all mx-2 w-[calc(100%-16px)] outline-none focus-visible:ring-2 focus-visible:ring-white/50 rounded-lg',
+                            selected
+                                ? 'bg-white/10 text-white font-medium shadow-sm'
+                                : 'text-neutral-300 hover:bg-white/5 hover:text-neutral-100',
+                        )}
+                        style={{ paddingLeft: `${depth * 14 + 8}px` }}
+                    >
+                        {folder ? (
+                            hasChildren ? (
+                                expanded ? (
+                                    <ChevronDown className="h-4 w-4 text-neutral-500 shrink-0" />
                                 ) : (
-                                    <span className="w-4 shrink-0" />
+                                    <ChevronRight className="h-4 w-4 text-neutral-500 shrink-0" />
                                 )
                             ) : (
                                 <span className="w-4 shrink-0" />
-                            )}
+                            )
+                        ) : (
+                            <span className="w-4 shrink-0" />
+                        )}
 
-                            {folder ? (
-                                <Folder
-                                    className={cn(
-                                        'h-4 w-4 shrink-0',
-                                        iconColorClass,
-                                    )}
-                                />
+                        {folder ? (
+                            <Folder
+                                className={cn(
+                                    'h-4 w-4 shrink-0',
+                                    iconColorClass,
+                                )}
+                            />
+                        ) : (
+                            <FileText
+                                className={cn(
+                                    'h-4 w-4 shrink-0',
+                                    iconColorClass,
+                                )}
+                            />
+                        )}
+
+                        <span className="truncate">{node.name}</span>
+
+                        {isBusy ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-neutral-500 shrink-0" />
+                        ) : isHovered ? (
+                            hoverInfo.type === 'unmark' ? (
+                                <X className="h-3.5 w-3.5 text-red-500 shrink-0" />
                             ) : (
-                                <FileText
-                                    className={cn(
-                                        'h-4 w-4 shrink-0',
-                                        iconColorClass,
-                                    )}
-                                />
-                            )}
-
-                            <span className="truncate">{node.name}</span>
-
-                            {isBusy ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin text-neutral-500 shrink-0" />
-                            ) : isHovered ? (
-                                hoverInfo.type === 'unmark' ? (
-                                    <X className="h-3.5 w-3.5 text-red-500 shrink-0" />
-                                ) : (
-                                    <Check className="h-3.5 w-3.5 text-success shrink-0" />
-                                )
-                            ) : completed ? (
                                 <Check className="h-3.5 w-3.5 text-success shrink-0" />
-                            ) : null}
+                            )
+                        ) : completed ? (
+                            <Check className="h-3.5 w-3.5 text-success shrink-0" />
+                        ) : null}
 
-                            <div className="flex-1" />
-                        </button>
-                    </ContextMenuTrigger>
-                    <ContextMenuContent className="bg-neutral-900 border-neutral-700 text-neutral-100 data-[state=closed]:pointer-events-none">
-                        <ContextMenuItem
-                            disabled={completed}
-                            onClick={() => onPersistCompletion(node, true)}
-                            onMouseEnter={() => handleActionHover(node, 'done')}
-                            onMouseLeave={() => handleActionHover(node, null)}
-                            className="focus:bg-green-500/10 focus:text-green-400 cursor-pointer"
-                        >
-                            <Check className="mr-2 h-4 w-4 text-green-500" />
-                            {markCompletedLabel}
-                        </ContextMenuItem>
-                        <ContextMenuItem
-                            disabled={!completed}
-                            onClick={() => onPersistCompletion(node, false)}
-                            onMouseEnter={() =>
-                                handleActionHover(node, 'unmark')
-                            }
-                            onMouseLeave={() => handleActionHover(node, null)}
-                            className="focus:bg-red-500/10 focus:text-red-400 cursor-pointer"
-                        >
-                            <X className="mr-2 h-4 w-4 text-red-500" />
-                            {markUncompletedLabel}
-                        </ContextMenuItem>
-                        <ContextMenuSeparator className="bg-neutral-700" />
-                        <ContextMenuItem
-                            onClick={() => onOpenExportDialog(node)}
-                            className="focus:bg-neutral-800 focus:text-white"
-                        >
-                            <Upload className="mr-2 h-4 w-4" />
-                            Exportieren...
-                        </ContextMenuItem>
-                    </ContextMenuContent>
-                </ContextMenu>
+                        <div className="flex-1" />
+                    </button>
+                </ActionContextMenu>
 
                 {folder && expanded && hasChildren && (
                     <div className="relative z-10">
