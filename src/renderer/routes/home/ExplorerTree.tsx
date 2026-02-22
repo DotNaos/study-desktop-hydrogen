@@ -96,6 +96,23 @@ export function ExplorerTree({
               ? 'text-success'
               : 'text-neutral-500';
 
+        let radiusClass = 'rounded-lg';
+        if (isHovered && !selected) {
+            if (isHoverRoot && isHoverLast) {
+                radiusClass = 'rounded-[8px]';
+            } else if (isHoverRoot) {
+                radiusClass = 'rounded-t-[8px] rounded-b-none';
+            } else if (isHoverLast) {
+                radiusClass = 'rounded-b-[8px] rounded-t-none';
+            } else {
+                radiusClass = 'rounded-none';
+            }
+        } else if (!isHovered) {
+            radiusClass = 'rounded-lg';
+        } else {
+            radiusClass = '';
+        }
+
         const markCompletedLabel = folder ? 'Alle erledigt' : 'Erledigt';
         const markUncompletedLabel = folder
             ? 'Alles nicht erledigt'
@@ -116,16 +133,14 @@ export function ExplorerTree({
                             }}
                             className={cn(
                                 'flex items-center gap-2 px-2 py-1.5 text-left text-sm transition-all mx-2 w-[calc(100%-16px)] outline-none focus-visible:ring-2 focus-visible:ring-white/50',
-                                !isHovered && 'rounded-lg',
+                                radiusClass,
                                 selected
                                     ? 'bg-white/10 text-white font-medium shadow-sm'
                                     : 'text-neutral-300 hover:bg-white/5 hover:text-neutral-100',
                                 isHovered &&
                                     !selected &&
                                     cn(
-                                        'rounded-none shadow-none',
-                                        isHoverRoot && 'rounded-t-lg',
-                                        isHoverLast && 'rounded-b-lg',
+                                        'shadow-none',
                                         hoverInfo.type === 'done'
                                             ? 'bg-green-500/10 text-green-400/90'
                                             : 'bg-red-500/10 text-red-400/90',
@@ -167,13 +182,14 @@ export function ExplorerTree({
 
                             {isBusy ? (
                                 <Loader2 className="h-3.5 w-3.5 animate-spin text-neutral-500 shrink-0" />
-                            ) : completed ||
-                              (isHovered && hoverInfo.type === 'unmark') ? (
-                                isHovered && hoverInfo.type === 'unmark' ? (
+                            ) : isHovered ? (
+                                hoverInfo.type === 'unmark' ? (
                                     <X className="h-3.5 w-3.5 text-red-500 shrink-0" />
                                 ) : (
                                     <Check className="h-3.5 w-3.5 text-success shrink-0" />
                                 )
+                            ) : completed ? (
+                                <Check className="h-3.5 w-3.5 text-success shrink-0" />
                             ) : null}
 
                             <div className="flex-1" />
