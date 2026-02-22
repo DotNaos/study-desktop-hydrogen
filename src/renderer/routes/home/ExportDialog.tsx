@@ -1,12 +1,4 @@
-import {
-    ExternalLink,
-    FileIcon,
-    FileText,
-    FolderIcon,
-    Loader2,
-    Save,
-    Share2,
-} from 'lucide-react';
+import { ExternalLink, FolderIcon, Loader2, Save, Share2 } from 'lucide-react';
 import type { ExplorerNode } from '../../app/treeUtils';
 import { isFolderNode } from '../../app/treeUtils';
 import type { ExportMode } from './types';
@@ -51,6 +43,25 @@ function GoodnotesIcon(props: React.SVGProps<SVGSVGElement>) {
     );
 }
 
+function PdfIcon(props: React.SVGProps<SVGSVGElement>) {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" {...props}>
+            <path
+                d="M4 4C4 2.89543 4.89543 2 6 2H14.1716C14.702 2 15.2107 2.21071 15.5858 2.58579L19.4142 6.41421C19.7893 6.78929 20 7.298 20 7.82843V20C20 21.1046 19.1046 22 18 22H6C4.89543 22 4 21.1046 4 20V4Z"
+                fill="#EF4444"
+            />
+            <path
+                d="M14 2V6.4C14 7.28366 14.7163 8 15.6 8H20L14 2Z"
+                fill="#B91C1C"
+            />
+            <path
+                d="M7 13.5H9.5C10.3284 13.5 11 14.1716 11 15C11 15.8284 10.3284 16.5 9.5 16.5H8V19H7V13.5ZM8 15.5H9.5C9.77614 15.5 10 15.2761 10 15C10 14.7239 9.77614 14.5 9.5 14.5H8V15.5ZM12 13.5H13.5C14.8807 13.5 16 14.6193 16 16C16 17.3807 14.8807 18.5 13.5 18.5H12V13.5ZM13 14.5V17.5H13.5C14.3284 17.5 15 16.8284 15 16C15 15.1716 14.3284 14.5 13.5 14.5H13ZM17 13.5H20V14.5H18V15.5H19.5V16.5H18V19H17V13.5Z"
+                fill="white"
+            />
+        </svg>
+    );
+}
+
 function PreviewTree({
     node,
     depth = 0,
@@ -62,17 +73,15 @@ function PreviewTree({
     return (
         <div className="flex flex-col">
             <div
-                className="flex items-center gap-2 py-1.5 px-2 hover:bg-neutral-800/50 rounded-md transition-colors"
+                className="flex items-center gap-2 py-2 px-2 hover:bg-neutral-800/50 rounded-md transition-colors group cursor-default"
                 style={{ paddingLeft: `${depth * 1.5 + 0.5}rem` }}
             >
                 {isFolder ? (
-                    <FolderIcon className="w-4 h-4 text-blue-400 shrink-0" />
-                ) : node.name.toLowerCase().endsWith('.pdf') ? (
-                    <FileText className="w-4 h-4 text-rose-400 shrink-0" />
+                    <FolderIcon className="w-5 h-5 text-blue-400 shrink-0" />
                 ) : (
-                    <FileIcon className="w-4 h-4 text-neutral-400 shrink-0" />
+                    <PdfIcon className="w-5 h-5 shrink-0 shadow-sm" />
                 )}
-                <span className="text-sm font-medium text-neutral-200 truncate">
+                <span className="text-sm font-medium text-neutral-200 truncate group-hover:text-white transition-colors ml-0.5">
                     {node.name}
                 </span>
             </div>
@@ -157,19 +166,6 @@ export function ExportDialog({
                         <button
                             type="button"
                             disabled={exportMode !== null}
-                            onClick={onSaveAs}
-                            className="rounded-full border border-neutral-700 px-4 py-2 text-sm text-neutral-200 hover:bg-neutral-800 disabled:opacity-60 transition-colors flex items-center gap-2"
-                        >
-                            <Save className="h-4 w-4" />
-                            Speichern unter
-                            {exportMode === 'saveAs' && (
-                                <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />
-                            )}
-                        </button>
-
-                        <button
-                            type="button"
-                            disabled={exportMode !== null}
                             onClick={onShare}
                             className="rounded-full border border-neutral-700 w-9 h-9 flex items-center justify-center text-neutral-200 hover:bg-neutral-800 disabled:opacity-60 transition-colors"
                             aria-label="Teilen"
@@ -194,6 +190,19 @@ export function ExportDialog({
                                 <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />
                             ) : (
                                 <ExternalLink className="h-4 w-4" />
+                            )}
+                        </button>
+
+                        <button
+                            type="button"
+                            disabled={exportMode !== null}
+                            onClick={onSaveAs}
+                            className="rounded-full border border-neutral-700 px-4 py-2 text-sm text-neutral-200 hover:bg-neutral-800 disabled:opacity-60 transition-colors flex items-center gap-2"
+                        >
+                            <Save className="h-4 w-4" />
+                            Speichern unter
+                            {exportMode === 'saveAs' && (
+                                <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />
                             )}
                         </button>
 
