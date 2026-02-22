@@ -1,6 +1,7 @@
 import {
     ExternalLink,
     FileIcon,
+    FileText,
     FolderIcon,
     Loader2,
     Save,
@@ -12,7 +13,7 @@ import type { ExportMode } from './types';
 
 function GoodnotesIcon(props: React.SVGProps<SVGSVGElement>) {
     return (
-        <svg viewBox="0 0 842 596" fill="none" {...props}>
+        <svg viewBox="50 180 200 200" fill="none" {...props}>
             <g>
                 <path
                     fill="#FFFFFF"
@@ -63,6 +64,8 @@ function PreviewTree({
             >
                 {isFolder ? (
                     <FolderIcon className="w-4 h-4 text-blue-400 shrink-0" />
+                ) : node.name.toLowerCase().endsWith('.pdf') ? (
+                    <FileText className="w-4 h-4 text-rose-400 shrink-0" />
                 ) : (
                     <FileIcon className="w-4 h-4 text-neutral-400 shrink-0" />
                 )}
@@ -142,7 +145,7 @@ export function ExportDialog({
                         type="button"
                         disabled={exportMode !== null}
                         onClick={onClose}
-                        className="rounded-lg px-4 py-2 text-sm text-neutral-300 hover:text-white hover:bg-neutral-800 disabled:opacity-60 transition-colors"
+                        className="rounded-full px-4 py-2 text-sm text-neutral-300 hover:text-white hover:bg-neutral-800 disabled:opacity-60 transition-colors"
                     >
                         Abbrechen
                     </button>
@@ -152,7 +155,7 @@ export function ExportDialog({
                             type="button"
                             disabled={exportMode !== null}
                             onClick={onSaveAs}
-                            className="rounded-lg border border-neutral-700 px-4 py-2 text-sm text-neutral-200 hover:bg-neutral-800 disabled:opacity-60 transition-colors flex items-center gap-2"
+                            className="rounded-full border border-neutral-700 px-4 py-2 text-sm text-neutral-200 hover:bg-neutral-800 disabled:opacity-60 transition-colors flex items-center gap-2"
                         >
                             <Save className="h-4 w-4" />
                             Speichern unter
@@ -165,12 +168,14 @@ export function ExportDialog({
                             type="button"
                             disabled={exportMode !== null}
                             onClick={onShare}
-                            className="rounded-lg border border-neutral-700 px-4 py-2 text-sm text-neutral-200 hover:bg-neutral-800 disabled:opacity-60 transition-colors flex items-center gap-2"
+                            className="rounded-full border border-neutral-700 w-9 h-9 flex items-center justify-center text-neutral-200 hover:bg-neutral-800 disabled:opacity-60 transition-colors"
+                            aria-label="Teilen"
+                            title="Teilen"
                         >
-                            <Share2 className="h-4 w-4" />
-                            Teilen
-                            {exportMode === 'share' && (
+                            {exportMode === 'share' ? (
                                 <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />
+                            ) : (
+                                <Share2 className="h-4 w-4" />
                             )}
                         </button>
 
@@ -178,12 +183,14 @@ export function ExportDialog({
                             type="button"
                             disabled={exportMode !== null}
                             onClick={onOpenWith}
-                            className="rounded-lg border border-neutral-700 px-4 py-2 text-sm text-neutral-200 hover:bg-neutral-800 disabled:opacity-60 transition-colors flex items-center gap-2"
+                            className="rounded-full border border-neutral-700 w-9 h-9 flex items-center justify-center text-neutral-200 hover:bg-neutral-800 disabled:opacity-60 transition-colors"
+                            aria-label="Öffnen mit"
+                            title="Öffnen mit"
                         >
-                            <ExternalLink className="h-4 w-4" />
-                            Öffnen mit
-                            {exportMode === 'openWith' && (
+                            {exportMode === 'openWith' ? (
                                 <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />
+                            ) : (
+                                <ExternalLink className="h-4 w-4" />
                             )}
                         </button>
 
@@ -191,9 +198,9 @@ export function ExportDialog({
                             type="button"
                             disabled={goodnotesDisabled}
                             onClick={onOpenGoodnotes}
-                            className="rounded-lg px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 bg-[#48BEDB] text-white hover:bg-[#3ca1ba] disabled:opacity-60 border-none"
+                            className="rounded-full px-5 py-2 text-sm font-medium transition-colors flex items-center gap-2 bg-[#48BEDB] text-white hover:bg-[#3ca1ba] disabled:opacity-60 border-none ml-2"
                         >
-                            <GoodnotesIcon className="h-4 w-4" />
+                            <GoodnotesIcon className="h-5 w-5 -ml-1" />
                             In GoodNotes öffnen
                             {exportMode === 'openGoodnotes' && (
                                 <Loader2 className="h-4 w-4 animate-spin text-white" />
