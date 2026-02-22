@@ -211,10 +211,10 @@ export async function exportNodeForAction(
 
     if (isFolderNode(node)) {
         const archiveName = sanitizeName(node.name);
-        const zipPath = path.join(
-            tmpdir(),
-            `study-desktop-export-${archiveName}-${Date.now()}.zip`,
+        const tempRoot = await fs.mkdtemp(
+            path.join(tmpdir(), 'study-desktop-zip-'),
         );
+        const zipPath = path.join(tempRoot, `${archiveName}.zip`);
 
         const fileCount = await createZipForNode(node, zipPath);
 
