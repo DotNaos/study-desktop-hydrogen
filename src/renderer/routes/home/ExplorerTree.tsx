@@ -5,8 +5,8 @@ import {
     FileText,
     Folder,
     Loader2,
-    MinusCircle,
     Upload,
+    X,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useCallback, useState } from 'react';
@@ -48,17 +48,20 @@ export function ExplorerTree({
     onPersistCompletion,
     onOpenExportDialog,
 }: ExplorerTreeProps) {
-    const [hoveredIds, setHoveredIds] = useState<Set<string>>(new Set());
+    const [hoverInfo, setHoverInfo] = useState<{
+        ids: Set<string>;
+        type: 'done' | 'unmark' | null;
+    }>({ ids: new Set(), type: null });
 
     const handleActionHover = useCallback(
-        (node: ExplorerNode, active: boolean) => {
-            if (!active) {
-                setHoveredIds(new Set());
+        (node: ExplorerNode, type: 'done' | 'unmark' | null) => {
+            if (!type) {
+                setHoverInfo({ ids: new Set(), type: null });
                 return;
             }
 
             const ids = collectAllIds(node);
-            setHoveredIds(new Set(ids));
+            setHoverInfo({ ids: new Set(ids), type });
         },
         [],
     );
@@ -70,10 +73,12 @@ export function ExplorerTree({
         const expanded = expandedIds.has(node.id);
         const hasChildren = (node.children?.length ?? 0) > 0;
         const isBusy = completionBusyId === node.id;
-        const isHovered = hoveredIds.has(node.id);
+        const isHovered = hoverInfo.ids.has(node.id);
 
         const markCompletedLabel = folder ? 'Alle erledigt' : 'Erledigt';
-        const markUncompletedLabel = folder ? 'Alles unerledigt' : 'Unerledigt';
+        const markUncompletedLabel = folder
+            ? 'Alles nicht erledigt'
+            : 'Nicht erledigt';
 
         return (
             <div key={node.id}>
@@ -95,7 +100,12 @@ export function ExplorerTree({
                                     : 'text-neutral-300 hover:bg-white/5 hover:text-neutral-100 rounded-lg',
                                 isHovered &&
                                     !selected &&
-                                    'bg-green-500/10 text-green-400/90 rounded-none shadow-none',
+                                    cn(
+                                        'rounded-none shadow-none',
+                                        hoverInfo.type === 'done'
+                                            ? 'bg-green-500/10 text-green-400/90'
+                                            : 'bg-red-500/10 text-red-400/90',
+                                    ),
                             )}
                             style={{ paddingLeft: `${depth * 14 + 8}px` }}
                         >
@@ -148,8 +158,8 @@ export function ExplorerTree({
                         <ContextMenuItem
                             disabled={completed}
                             onClick={() => onPersistCompletion(node, true)}
-                            onMouseEnter={() => handleActionHover(node, true)}
-                            onMouseLeave={() => handleActionHover(node, false)}
+                            onMouseEnter={() => handleActionHover(node, 'done')}
+                            onMouseLeave={() => handleActionHover(node, null)}
                             className="focus:bg-green-500/10 focus:text-green-400 cursor-pointer"
                         >
                             <Check className="mr-2 h-4 w-4 text-green-500" />
@@ -158,11 +168,13 @@ export function ExplorerTree({
                         <ContextMenuItem
                             disabled={!completed}
                             onClick={() => onPersistCompletion(node, false)}
-                            onMouseEnter={() => handleActionHover(node, true)}
-                            onMouseLeave={() => handleActionHover(node, false)}
+                            onMouseEnter={() =>
+                                handleActionHover(node, 'unmark')
+                            }
+                            onMouseLeave={() => handleActionHover(node, null)}
                             className="focus:bg-red-500/10 focus:text-red-400 cursor-pointer"
                         >
-                            <MinusCircle className="mr-2 h-4 w-4 text-red-500" />
+                            <X className="mr-2 h-4 w-4 text-red-500" />
                             {markUncompletedLabel}
                         </ContextMenuItem>
                         <ContextMenuSeparator className="bg-neutral-700" />
