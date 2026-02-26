@@ -122,6 +122,8 @@ function Home() {
 
     const [roots, setRoots] = useState<ExplorerNode[]>([]);
     const [treeLoading, setTreeLoading] = useState(false);
+    const [syncBusyId, setSyncBusyId] = useState<string | null>(null);
+    const [syncAllBusy, setSyncAllBusy] = useState(false);
     const [completionMap, setCompletionMap] = useState<Map<string, boolean>>(
         () => new Map(),
     );
@@ -776,6 +778,96 @@ function Home() {
         }
     }, [apiBase, pushToast]);
 
+    const refreshSemesterNode = useCallback(
+        async (node: ExplorerNode) => {
+            if (!apiBase) {
+                return;
+            }
+
+            setSyncBusyId(node.id);
+            try {
+                const response = await fetch(
+                    `${apiBase}/nodes/${encodeURIComponent(node.id)}/refresh`,
+                    { method: 'POST' },
+                );
+                if (!response.ok) {
+                    const payload = await readJson<{ error?: string }>(response);
+                    throw new Error(
+                        payload.error ||
+                            `Semester-Sync fehlgeschlagen (${response.status})`,
+                    );
+                }
+
+                await loadTree();
+                pushToast(`Semester ${node.name} synchronisiert.`, 'success');
+            } catch (error) {
+                pushToast(
+                    error instanceof Error
+                        ? error.message
+                        : 'Semester konnte nicht synchronisiert werden.',
+                    'error',
+                );
+            } finally {
+                setSyncBusyId(null);
+            }
+        },
+        [apiBase, loadTree, pushToast],
+    );
+    const refreshAllSemesters = useCallback(async () => {
+        if (!apiBase) {
+            return;
+        }
+
+        const semesterRoots = roots.filter((node) => node.type === 'folder');
+        if (semesterRoots.length === 0) {
+            pushToast('Keine Semester zum Synchronisieren gefunden.', 'error');
+            return;
+        }
+
+        setSyncAllBusy(true);
+        try {
+            let syncedCount = 0;
+            const failedSemesters: string[] = [];
+
+            for (const node of semesterRoots) {
+                const response = await fetch(
+                    `${apiBase}/nodes/${encodeURIComponent(node.id)}/refresh`,
+                    { method: 'POST' },
+                );
+                if (response.ok) {
+                    syncedCount += 1;
+                } else {
+                    failedSemesters.push(node.name);
+                }
+            }
+
+            await loadTree();
+
+            if (failedSemesters.length === 0) {
+                pushToast(
+                    `${syncedCount} Semester synchronisiert.`,
+                    'success',
+                );
+            } else {
+                const preview = failedSemesters.slice(0, 2).join(', ');
+                const suffix = failedSemesters.length > 2 ? ', ...' : '';
+                pushToast(
+                    `${syncedCount}/${semesterRoots.length} Semester synchronisiert. Fehler: ${preview}${suffix}`,
+                    'error',
+                );
+            }
+        } catch (error) {
+            pushToast(
+                error instanceof Error
+                    ? error.message
+                    : 'Semester konnten nicht synchronisiert werden.',
+                'error',
+            );
+        } finally {
+            setSyncAllBusy(false);
+        }
+    }, [apiBase, loadTree, pushToast, roots]);
+
     const toggleExpanded = (nodeId: string) => {
         setExpandedIds((prev) => {
             const next = new Set(prev);
@@ -995,7 +1087,13 @@ function Home() {
     const activeCompletionSortOption =
         completionSortOptions.find((option) => option.value === completionSort) ??
         completionSortOptions[0];
-
+    const canSyncAllSemesters = Boolean(
+        authStatus?.authenticated &&
+            !treeLoading &&
+            !syncBusyId &&
+            !syncAllBusy &&
+            roots.some((node) => node.type === 'folder'),
+    );
     const triggerUpdateCheck = useCallback(async () => {
         updaterCheckOriginRef.current = 'manual';
         setUpdaterActionBusy('check');
@@ -1275,6 +1373,25 @@ function Home() {
 
                             <button
                                 type="button"
+                                onClick={() => void refreshAllSemesters()}
+                                disabled={!canSyncAllSemesters}
+                                className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-sm text-neutral-100 hover:bg-neutral-900/60 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <RefreshCw
+                                    className={cn(
+                                        'h-4 w-4 text-neutral-400',
+                                        syncAllBusy && 'animate-spin',
+                                    )}
+                                />
+                                <span>
+                                    {syncAllBusy
+                                        ? 'Synchronisiere alle Semester...'
+                                        : 'Alle Semester synchronisieren'}
+                                </span>
+                            </button>
+
+                            <button
+                                type="button"
                                 onClick={() => void onLogout()}
                                 className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-sm text-neutral-100 hover:bg-neutral-900/60 hover:text-red-300"
                             >
@@ -1395,6 +1512,8 @@ function Home() {
                                                 completionBusyId={
                                                     completionBusyId
                                                 }
+                                                syncBusyId={syncBusyId}
+                                                syncAllBusy={syncAllBusy}
                                                 onToggleExpanded={
                                                     toggleExpanded
                                                 }
@@ -1411,6 +1530,9 @@ function Home() {
                                                 onOpenExportDialog={
                                                     openExportDialog
                                                 }
+                                                onSyncNode={(node) => {
+                                                    void refreshSemesterNode(node);
+                                                }}
                                             />
                                         </div>
                                     )}

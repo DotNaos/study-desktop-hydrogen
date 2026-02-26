@@ -25,10 +25,13 @@ interface ExplorerTreeProps {
     expandedIds: Set<string>;
     selectedResourceId: string | null;
     completionBusyId: string | null;
+    syncBusyId: string | null;
+    syncAllBusy: boolean;
     onToggleExpanded: (nodeId: string) => void;
     onOpenResource: (nodeId: string) => void;
     onPersistCompletion: (node: ExplorerNode, completed: boolean) => void;
     onOpenExportDialog: (node: ExplorerNode) => void;
+    onSyncNode: (node: ExplorerNode) => void;
 }
 
 const emptyHoverInfo = {
@@ -44,10 +47,13 @@ export function ExplorerTree({
     expandedIds,
     selectedResourceId,
     completionBusyId,
+    syncBusyId,
+    syncAllBusy,
     onToggleExpanded,
     onOpenResource,
     onPersistCompletion,
     onOpenExportDialog,
+    onSyncNode,
 }: ExplorerTreeProps) {
     const [hoverInfo, setHoverInfo] = useState(emptyHoverInfo);
     const menuOpenRef = useRef(false);
@@ -174,9 +180,11 @@ export function ExplorerTree({
         const expanded = expandedIds.has(node.id);
         const hasChildren = (node.children?.length ?? 0) > 0;
         const isBusy = completionBusyId === node.id;
+        const isSyncBusy = syncBusyId === node.id;
         const isHovered = hoverInfo.ids.has(node.id);
         const isHoverRoot = hoverInfo.rootId === node.id;
         const isHoverLast = hoverInfo.lastId === node.id;
+        const isSemesterNode = folder && depth === 0;
 
         const iconColorClass = isHovered
             ? hoverInfo.type === 'done'
@@ -213,6 +221,11 @@ export function ExplorerTree({
                         handleActionHover(node, action)
                     }
                     onExport={() => onOpenExportDialog(node)}
+                    onSync={
+                        isSemesterNode ? () => onSyncNode(node) : undefined
+                    }
+                    syncBusy={isSyncBusy}
+                    syncDisabled={isSyncBusy || syncAllBusy}
                     onOpenChange={handleMenuOpenChange}
                 >
                     <button

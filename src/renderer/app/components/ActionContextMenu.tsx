@@ -1,4 +1,4 @@
-import { Check, Upload, X } from 'lucide-react';
+import { Check, RefreshCw, Upload, X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import {
     ContextMenu,
@@ -15,6 +15,9 @@ export interface ActionContextMenuProps {
     onPersistCompletion?: (completed: boolean) => void;
     onHoverAction?: (action: 'done' | 'unmark' | null) => void;
     onExport?: () => void;
+    onSync?: () => void;
+    syncDisabled?: boolean;
+    syncBusy?: boolean;
     onOpenChange?: (open: boolean) => void;
 }
 
@@ -25,6 +28,9 @@ export function ActionContextMenu({
     onPersistCompletion,
     onHoverAction,
     onExport,
+    onSync,
+    syncDisabled = false,
+    syncBusy = false,
     onOpenChange,
 }: ActionContextMenuProps) {
     const markCompletedLabel = isFolder ? 'Alle erledigt' : 'Erledigt';
@@ -71,6 +77,23 @@ export function ActionContextMenu({
                         <Upload className="mr-2 h-4 w-4" />
                         Exportieren...
                     </ContextMenuItem>
+                )}
+                {onSync && (
+                    <>
+                        {(onPersistCompletion || onExport) && (
+                            <ContextMenuSeparator className="bg-neutral-700" />
+                        )}
+                        <ContextMenuItem
+                            disabled={syncDisabled || syncBusy}
+                            onClick={onSync}
+                            className="text-neutral-200 focus:bg-neutral-800 focus:text-white cursor-pointer disabled:opacity-50"
+                        >
+                            <RefreshCw
+                                className={`mr-2 h-4 w-4 ${syncBusy ? 'animate-spin' : ''}`}
+                            />
+                            Semester synchronisieren
+                        </ContextMenuItem>
+                    </>
                 )}
             </ContextMenuContent>
         </ContextMenu>
