@@ -1134,8 +1134,14 @@ function Home() {
         try {
             const result = await window.studySync?.updaterQuitAndInstall?.();
             if (result && !result.ok) {
+                const message =
+                    result.error === 'APP_NOT_IN_APPLICATIONS'
+                        ? 'Auto-Update funktioniert nur, wenn die App im Programme-Ordner liegt.'
+                        : result.error === 'UPDATE_ALREADY_INSTALLED'
+                          ? 'Die geladene Version ist bereits installiert.'
+                          : result.error || 'Update konnte nicht gestartet werden.';
                 pushToast(
-                    result.error || 'Update konnte nicht gestartet werden.',
+                    message,
                     'error',
                 );
                 setUpdaterActionBusy(null);

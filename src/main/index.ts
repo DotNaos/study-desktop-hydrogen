@@ -86,6 +86,21 @@ function toUpdaterErrorMessage(error: unknown): string {
     return String(error);
 }
 
+function normalizeVersion(version: string | null | undefined): string {
+    return String(version ?? '')
+        .trim()
+        .replace(/^v/i, '');
+}
+
+function isSameVersion(
+    left: string | null | undefined,
+    right: string | null | undefined,
+): boolean {
+    const normalizedLeft = normalizeVersion(left);
+    const normalizedRight = normalizeVersion(right);
+    return Boolean(normalizedLeft) && normalizedLeft === normalizedRight;
+}
+
 async function checkForAppUpdates(reason: 'startup' | 'manual'): Promise<void> {
     if (!isUpdaterEnabled()) {
         return;
@@ -148,6 +163,17 @@ function initializeAutoUpdater(): void {
         return;
     }
 
+    if (process.platform === 'darwin' && !app.isInApplicationsFolder()) {
+        setUpdaterState({
+            enabled: false,
+            stage: 'unsupported',
+            message:
+                'Auto-Update ist nur verfügbar, wenn die App im Programme-Ordner installiert ist.',
+            error: null,
+        });
+        return;
+    }
+
     autoUpdater.autoDownload = true;
     autoUpdater.autoInstallOnAppQuit = true;
     autoUpdater.allowPrerelease = false;
@@ -168,6 +194,22 @@ function initializeAutoUpdater(): void {
     });
 
     autoUpdater.on('update-available', (info) => {
+        if (isSameVersion(info.version ?? null, app.getVersion())) {
+            setUpdaterState({
+                enabled: true,
+                stage: 'not-available',
+                latestVersion: info.version ?? null,
+                error: null,
+                message: 'App ist aktuell.',
+                progressPercent: null,
+                bytesPerSecond: null,
+                transferredBytes: null,
+                totalBytes: null,
+                checkedAt: Date.now(),
+            });
+            return;
+        }
+
         setUpdaterState({
             enabled: true,
             stage: 'available',
@@ -221,6 +263,22 @@ function initializeAutoUpdater(): void {
     });
 
     autoUpdater.on('update-downloaded', (info) => {
+        if (isSameVersion(info.version ?? null, app.getVersion())) {
+            setUpdaterState({
+                enabled: true,
+                stage: 'not-available',
+                latestVersion: info.version ?? null,
+                error: null,
+                message: 'App ist bereits auf dem neuesten Stand.',
+                progressPercent: null,
+                bytesPerSecond: null,
+                transferredBytes: null,
+                totalBytes: null,
+                checkedAt: Date.now(),
+            });
+            return;
+        }
+
         setUpdaterState({
             enabled: true,
             stage: 'downloaded',
@@ -456,9 +514,23 @@ ipcMain.handle(
             return { ok: false, error: 'Auto-Updater ist nicht verfügbar.' };
         }
 
+        if (process.platform === 'darwin' && !app.isInApplicationsFolder()) {
+            return {
+                ok: false,
+                error: 'APP_NOT_IN_APPLICATIONS',
+            };
+        }
+
+        if (isSameVersion(updaterState.latestVersion, app.getVersion())) {
+            return {
+                ok: false,
+                error: 'UPDATE_ALREADY_INSTALLED',
+            };
+        }
+
         try {
             setImmediate(() => {
-                autoUpdater.quitAndInstall();
+                autoUpdater.quitAndInstall(false, true);
             });
             return { ok: true };
         } catch (error) {
