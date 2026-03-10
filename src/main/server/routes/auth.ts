@@ -27,10 +27,10 @@ router.get("/status", (_req, res) => {
 router.post("/login", async (req, res) => {
   try {
     const username = String((req.body as any)?.username || "").trim();
-    const password = String((req.body as any)?.password || "").trim();
+    const password = String((req.body as any)?.password || "");
     const schoolId = String((req.body as any)?.schoolId || "").trim();
 
-    if (username && password) {
+    if (username && password.length > 0) {
       const result = await authenticateMoodleCredentials({
         username,
         password,
@@ -55,6 +55,10 @@ router.post("/login", async (req, res) => {
       error instanceof Error ? error.message : "LOGIN_FAILED";
     if (code === "USERNAME_PASSWORD_REQUIRED") {
       res.status(400).json({ error: code });
+      return;
+    }
+    if (code === "INVALID_CREDENTIALS") {
+      res.status(401).json({ error: code });
       return;
     }
     res.status(401).json({ error: "LOGIN_FAILED" });

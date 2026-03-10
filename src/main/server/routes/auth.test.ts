@@ -133,6 +133,56 @@ describe('auth routes', () => {
         });
     });
 
+    it('preserves password whitespace when posting credentials', async () => {
+        isAuthenticatedMock.mockReturnValue(true);
+        authenticateMoodleCredentialsMock.mockResolvedValue({
+            schoolId: 'fhgr',
+            credentialsHash: 'hash',
+        });
+
+        const response = await fetch(`${baseUrl}/login`, {
+            method: 'POST',
+            headers: {
+                'content-type': 'application/json',
+            },
+            body: JSON.stringify({
+                username: 'alice',
+                password: ' secret ',
+                schoolId: 'fhgr',
+            }),
+        });
+
+        expect(response.status).toBe(200);
+        expect(authenticateMoodleCredentialsMock).toHaveBeenCalledWith({
+            username: 'alice',
+            password: ' secret ',
+            schoolId: 'fhgr',
+        });
+    });
+
+    it('returns invalid credentials when the login provider rejects the secret', async () => {
+        isAuthenticatedMock.mockReturnValue(false);
+        authenticateMoodleCredentialsMock.mockRejectedValue(
+            new Error('INVALID_CREDENTIALS'),
+        );
+
+        const response = await fetch(`${baseUrl}/login`, {
+            method: 'POST',
+            headers: {
+                'content-type': 'application/json',
+            },
+            body: JSON.stringify({
+                username: 'alice',
+                password: 'secret',
+                schoolId: 'fhgr',
+            }),
+        });
+
+        const payload = await response.json();
+        expect(response.status).toBe(401);
+        expect(payload.error).toBe('INVALID_CREDENTIALS');
+    });
+
     it('returns 401 when bootstrap login fails', async () => {
         isAuthenticatedMock.mockReturnValue(false);
         bootstrapMoodleAuthMock.mockResolvedValue(false);

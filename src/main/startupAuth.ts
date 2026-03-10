@@ -64,7 +64,7 @@ function resolveCredentials(schoolId: string): {
     username: string;
     password: string;
 } | null {
-    const username =
+    const rawUsername =
         process.env.STUDY_SYNC_USERNAME ||
         process.env.OS_STUDY_USERNAME ||
         process.env.MOODLE_USERNAME ||
@@ -76,12 +76,13 @@ function resolveCredentials(schoolId: string): {
         process.env.MOODLE_PASSWORD ||
         store.get(`schools.${schoolId}.password`) ||
         '';
+    const username = rawUsername.trim();
 
-    if (!username.trim() || !password.trim()) {
+    if (!username || password.length === 0) {
         return null;
     }
 
-    return { username: username.trim(), password: password.trim() };
+    return { username, password };
 }
 
 async function restoreSessionIfAvailable(schoolId: string): Promise<boolean> {
@@ -165,8 +166,8 @@ export async function authenticateMoodleCredentials(
     input: AuthenticateCredentialsInput,
 ): Promise<{ schoolId: string; credentialsHash: string }> {
     const username = input.username.trim();
-    const password = input.password.trim();
-    if (!username || !password) {
+    const password = input.password;
+    if (!username || password.length === 0) {
         throw new Error('USERNAME_PASSWORD_REQUIRED');
     }
 

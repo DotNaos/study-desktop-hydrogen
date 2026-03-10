@@ -32,9 +32,15 @@ async function fillField(page: Page, selector: string, value: string): Promise<b
     const field = await page.$(selector);
     if (!field) return false;
 
-    await field.click({ clickCount: 3 });
-    await page.keyboard.press('Backspace');
-    await field.type(value, { delay: 10 });
+    await field.evaluate((element, nextValue) => {
+        const input = element as HTMLInputElement | HTMLTextAreaElement;
+        input.focus();
+        input.value = '';
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.value = nextValue;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+    }, value);
     return true;
 }
 
@@ -112,6 +118,24 @@ async function waitForSessionCookie(
     const endTime = Date.now() + timeoutMs;
 
     while (Date.now() < endTime) {
+        const loginError = await page.evaluate(() => {
+            const errorNodes = Array.from(
+                document.querySelectorAll(
+                    '[role="alert"], .alert, .error, .alert-danger, .message',
+                ),
+            );
+
+            return errorNodes
+                .map((node) => node.textContent?.trim() || '')
+                .find((text) =>
+                    /incorrect|invalid|ungültig|falsch|fehler/i.test(text),
+                ) || null;
+        }).catch(() => null);
+
+        if (loginError) {
+            throw new Error('INVALID_CREDENTIALS');
+        }
+
         const cookies = await page.cookies(school.moodleUrl);
         const hasSession = cookies.some((cookie) => {
             const name = cookie.name.toLowerCase();
