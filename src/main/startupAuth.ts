@@ -130,18 +130,49 @@ interface AuthenticateCredentialsInput {
     schoolId?: string;
 }
 
+function shouldRetryInteractive(error: unknown): boolean {
+    if (!(error instanceof Error)) {
+        return true;
+    }
+
+    return error.message !== 'INVALID_CREDENTIALS';
+}
+
 async function authenticateAndPersist(
     schoolId: string,
     username: string,
     password: string,
 ): Promise<{ schoolId: string; credentialsHash: string }> {
-    const result = await loginWithPuppeteer({
-        schoolId,
-        username,
-        password,
-        headless: true,
-        timeoutMs: 120_000,
-    });
+    let result;
+    try {
+        result = await loginWithPuppeteer({
+            schoolId,
+            username,
+            password,
+            headless: true,
+            timeoutMs: 120_000,
+        });
+    } catch (error) {
+        if (
+            !process.versions?.electron ||
+            !shouldRetryInteractive(error)
+        ) {
+            throw error;
+        }
+
+        logger.warn('Headless Moodle login failed, retrying in visible browser', {
+            schoolId,
+            error: error instanceof Error ? error.message : String(error),
+        });
+
+        result = await loginWithPuppeteer({
+            schoolId,
+            username,
+            password,
+            headless: false,
+            timeoutMs: 180_000,
+        });
+    }
 
     await setMoodleCookies(result.cookies, result.schoolId);
 
