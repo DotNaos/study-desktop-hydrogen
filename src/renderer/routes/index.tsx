@@ -52,6 +52,9 @@ export const Route = createFileRoute('/')({
 
 type CompletionSort = 'none' | 'completed-first' | 'completed-last';
 type FocusedPanel = 'explorer' | 'viewer';
+type LoginSchoolId = 'fhgr' | 'phgr';
+
+const LOGIN_SCHOOLS = new Set<LoginSchoolId>(['fhgr', 'phgr']);
 
 const EXPLORER_VIEW_SETTINGS_STORAGE_KEY =
     'study-desktop-explorer-view-settings';
@@ -61,6 +64,13 @@ function isCompletionSort(value: unknown): value is CompletionSort {
         value === 'none' ||
         value === 'completed-first' ||
         value === 'completed-last'
+    );
+}
+
+function isLoginSchoolId(value: unknown): value is LoginSchoolId {
+    return (
+        typeof value === 'string' &&
+        LOGIN_SCHOOLS.has(value as LoginSchoolId)
     );
 }
 
@@ -109,6 +119,7 @@ function Home() {
     );
     const [authLoading, setAuthLoading] = useState(true);
     const [authError, setAuthError] = useState<string | null>(null);
+    const [loginSchoolId, setLoginSchoolId] = useState<LoginSchoolId>('fhgr');
     const [loginUsername, setLoginUsername] = useState('');
     const [loginPassword, setLoginPassword] = useState('');
     const [loginSubmitting, setLoginSubmitting] = useState(false);
@@ -568,6 +579,9 @@ function Home() {
             }
             const status = await readJson<AuthStatusResponse>(response);
             setAuthStatus(status);
+            if (isLoginSchoolId(status.selectedSchool)) {
+                setLoginSchoolId(status.selectedSchool);
+            }
             if (status.authenticated) {
                 void loadTree();
             }
@@ -588,10 +602,17 @@ function Home() {
         try {
             const stored = localStorage.getItem('study-desktop-remember-me');
             if (stored) {
-                const dec = JSON.parse(atob(stored));
+                const dec = JSON.parse(atob(stored)) as {
+                    username?: unknown;
+                    password?: unknown;
+                    schoolId?: unknown;
+                };
                 if (dec.username && dec.password) {
-                    setLoginUsername(dec.username);
-                    setLoginPassword(dec.password);
+                    setLoginUsername(String(dec.username));
+                    setLoginPassword(String(dec.password));
+                    if (isLoginSchoolId(dec.schoolId)) {
+                        setLoginSchoolId(dec.schoolId);
+                    }
                     setRememberMe(true);
                 }
             }
@@ -689,6 +710,7 @@ function Home() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    schoolId: loginSchoolId,
                     username: loginUsername.trim(),
                     password: loginPassword,
                 }),
@@ -706,7 +728,7 @@ function Home() {
             setAuthStatus((prev) => ({
                 authenticated: true,
                 error: null,
-                selectedSchool: prev?.selectedSchool ?? null,
+                selectedSchool: payload.schoolId ?? loginSchoolId,
                 hasStoredCredentials: true,
             }));
 
@@ -714,6 +736,7 @@ function Home() {
                 try {
                     const enc = btoa(
                         JSON.stringify({
+                            schoolId: loginSchoolId,
                             username: loginUsername.trim(),
                             password: loginPassword,
                         }),
@@ -1178,10 +1201,16 @@ function Home() {
             <LoginGate
                 authError={authError}
                 authStatusError={authStatus?.error ?? null}
+                loginSchoolId={loginSchoolId}
                 loginUsername={loginUsername}
                 loginPassword={loginPassword}
                 loginSubmitting={loginSubmitting}
                 rememberMe={rememberMe}
+                onSchoolChange={(value) => {
+                    if (isLoginSchoolId(value)) {
+                        setLoginSchoolId(value);
+                    }
+                }}
                 onUsernameChange={setLoginUsername}
                 onPasswordChange={setLoginPassword}
                 onRememberMeChange={setRememberMe}

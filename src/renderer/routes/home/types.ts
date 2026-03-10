@@ -9,6 +9,7 @@ export interface LoginResponse {
     ok?: boolean;
     authenticated?: boolean;
     error?: string;
+    schoolId?: string;
 }
 
 export type ExportMode = 'saveAs' | 'share' | 'openWith' | 'openGoodnotes';

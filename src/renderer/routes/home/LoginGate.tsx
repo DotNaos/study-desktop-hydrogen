@@ -4,10 +4,12 @@ import type { FormEvent } from 'react';
 interface LoginGateProps {
     authError: string | null;
     authStatusError?: string | null;
+    loginSchoolId: string;
     loginUsername: string;
     loginPassword: string;
     loginSubmitting: boolean;
     rememberMe: boolean;
+    onSchoolChange: (value: string) => void;
     onUsernameChange: (value: string) => void;
     onPasswordChange: (value: string) => void;
     onRememberMeChange: (value: boolean) => void;
@@ -30,10 +32,12 @@ function mapAuthMessage(codeOrMessage: string): string {
 export function LoginGate({
     authError,
     authStatusError,
+    loginSchoolId,
     loginUsername,
     loginPassword,
     loginSubmitting,
     rememberMe,
+    onSchoolChange,
     onUsernameChange,
     onPasswordChange,
     onRememberMeChange,
@@ -71,6 +75,20 @@ export function LoginGate({
                 </div>
 
                 <div className="space-y-5">
+                    <div>
+                        <span className="block text-sm text-neutral-400 font-medium mb-1.5">
+                            Schule
+                        </span>
+                        <select
+                            className="w-full h-11 px-3 mt-1.5 bg-[#18181f] border border-[#2a2a35] hover:bg-[#1d1d26] hover:border-[#353545] focus:bg-[#18181f] focus:border-cyan-500 focus:outline-none rounded-lg text-neutral-100 transition-colors shadow-none"
+                            value={loginSchoolId}
+                            onChange={(e) => onSchoolChange(e.target.value)}
+                        >
+                            <option value="fhgr">FHGR</option>
+                            <option value="phgr">PHGR</option>
+                        </select>
+                    </div>
+
                     <div>
                         <span className="block text-sm text-neutral-400 font-medium mb-1.5">
                             Username
