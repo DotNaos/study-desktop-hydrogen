@@ -4,7 +4,7 @@ import {
     install,
     resolveBuildId,
 } from '@puppeteer/browsers';
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, rmSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { createLogger } from '@aryazos/ts-base/logging';
@@ -154,6 +154,8 @@ export async function ensureChromium(): Promise<string> {
 
     const buildId = await resolveBuildId(Browser.CHROME, platform, 'stable');
     const cacheDir = getRuntimeChromiumBaseDir();
+    const platformPrefix = getPlatformPrefix();
+    const buildCacheDir = path.join(cacheDir, 'chrome', `${platformPrefix}-${buildId}`);
 
     logger.info('Downloading Chrome for Testing', {
         cacheDir,
@@ -161,12 +163,44 @@ export async function ensureChromium(): Promise<string> {
         platform,
     });
 
-    const result = await install({
-        browser: Browser.CHROME,
-        buildId,
-        cacheDir,
-        platform,
-    });
+    let result;
+    try {
+        result = await install({
+            browser: Browser.CHROME,
+            buildId,
+            cacheDir,
+            platform,
+        });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        const missingExecutableError =
+            message.includes('executable') && message.includes('is missing');
+
+        if (!missingExecutableError) {
+            throw error;
+        }
+
+        logger.warn('Detected incomplete Chromium cache, retrying install after cleanup', {
+            cacheDir,
+            buildCacheDir,
+            buildId,
+            platform,
+            error: message,
+        });
+
+        try {
+            rmSync(buildCacheDir, { recursive: true, force: true });
+        } catch {
+            // Ignore cleanup failures and let the retry surface a deterministic error.
+        }
+
+        result = await install({
+            browser: Browser.CHROME,
+            buildId,
+            cacheDir,
+            platform,
+        });
+    }
 
     logger.info('Chrome for Testing available', {
         executablePath: result.executablePath,
