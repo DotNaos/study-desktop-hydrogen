@@ -31,6 +31,8 @@ router.post("/login", async (req, res) => {
     const schoolId = String((req.body as any)?.schoolId || "").trim();
 
     if (username && password.length > 0) {
+      clearMoodleAuth();
+      store.delete("moodleSession");
       const result = await authenticateMoodleCredentials({
         username,
         password,

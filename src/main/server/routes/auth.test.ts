@@ -126,6 +126,8 @@ describe('auth routes', () => {
         expect(payload.ok).toBe(true);
         expect(payload.authenticated).toBe(true);
         expect(payload.schoolId).toBe('fhgr');
+        expect(clearMoodleAuthMock).toHaveBeenCalledTimes(1);
+        expect(storeDeleteMock).toHaveBeenCalledWith('moodleSession');
         expect(authenticateMoodleCredentialsMock).toHaveBeenCalledWith({
             username: 'alice',
             password: 'secret',
