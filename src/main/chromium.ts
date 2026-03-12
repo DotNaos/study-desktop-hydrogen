@@ -57,14 +57,7 @@ function findVersionDir(baseDir: string, prefix: string): string | null {
     }
 }
 
-function executableFromBaseDir(baseDir: string): string | null {
-    const prefix = getPlatformPrefix();
-    const versionDir = findVersionDir(baseDir, prefix);
-
-    if (!versionDir) {
-        return null;
-    }
-
+function executableFromVersionDir(baseDir: string, versionDir: string): string {
     if (process.platform === 'darwin') {
         const chromeDir = process.arch === 'arm64' ? 'chrome-mac-arm64' : 'chrome-mac-x64';
         return path.join(
@@ -86,18 +79,61 @@ function executableFromBaseDir(baseDir: string): string | null {
     return path.join(baseDir, versionDir, 'chrome-linux64', 'chrome');
 }
 
+export function getChromiumExecutablePathFromBaseDir(baseDir: string): string | null {
+    const prefix = getPlatformPrefix();
+    const searchDirs = [baseDir, path.join(baseDir, 'chrome')];
+
+    for (const searchDir of searchDirs) {
+        if (!existsSync(searchDir)) {
+            continue;
+        }
+
+        const versionDir = findVersionDir(searchDir, prefix);
+        if (!versionDir) {
+            continue;
+        }
+
+        const executablePath = executableFromVersionDir(searchDir, versionDir);
+        if (existsSync(executablePath)) {
+            return executablePath;
+        }
+
+        try {
+            const entries = readdirSync(searchDir)
+                .filter((entry) => entry.startsWith(prefix))
+                .sort()
+                .reverse();
+
+            for (const entry of entries) {
+                const candidate = executableFromVersionDir(searchDir, entry);
+                if (existsSync(candidate)) {
+                    return candidate;
+                }
+            }
+        } catch {
+            // Ignore malformed cache directories and keep searching.
+        }
+    }
+
+    return null;
+}
+
 export function getChromiumExecutablePath(): string | null {
     const overridePath = process.env.STUDY_SYNC_CHROMIUM_PATH;
     if (overridePath && existsSync(overridePath)) {
         return overridePath;
     }
 
-    const bundled = executableFromBaseDir(getBundledChromiumBaseDir());
+    const bundled = getChromiumExecutablePathFromBaseDir(
+        getBundledChromiumBaseDir(),
+    );
     if (bundled && existsSync(bundled)) {
         return bundled;
     }
 
-    const runtime = executableFromBaseDir(getRuntimeChromiumBaseDir());
+    const runtime = getChromiumExecutablePathFromBaseDir(
+        getRuntimeChromiumBaseDir(),
+    );
     if (runtime && existsSync(runtime)) {
         return runtime;
     }
@@ -136,7 +172,23 @@ export async function ensureChromium(): Promise<string> {
         executablePath: result.executablePath,
     });
 
-    return result.executablePath;
+    if (existsSync(result.executablePath)) {
+        return result.executablePath;
+    }
+
+    const recoveredPath = getChromiumExecutablePathFromBaseDir(cacheDir);
+    if (recoveredPath) {
+        logger.warn('Resolved Chromium from cache after install returned a missing executable', {
+            cacheDir,
+            executablePath: result.executablePath,
+            recoveredPath,
+        });
+        return recoveredPath;
+    }
+
+    throw new Error(
+        `Chrome for Testing install completed but executable is missing: ${result.executablePath}`,
+    );
 }
 
 export function getDefaultChromiumCacheDir(): string {
