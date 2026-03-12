@@ -51,6 +51,83 @@ async function clickIfExists(page: Page, selector: string): Promise<boolean> {
     return true;
 }
 
+async function waitForVisibleSelector(
+    page: Page,
+    selector: string,
+    timeoutMs: number,
+): Promise<boolean> {
+    return page
+        .waitForSelector(selector, {
+            visible: true,
+            timeout: timeoutMs,
+        })
+        .then(() => true)
+        .catch(() => false);
+}
+
+async function clickVisibleIfExists(
+    page: Page,
+    selector: string,
+): Promise<boolean> {
+    const button = await page.$(selector);
+    if (!button) return false;
+
+    const visible = (await button.boundingBox()) !== null;
+    if (!visible) return false;
+
+    await button.click();
+    return true;
+}
+
+async function clickButtonByText(
+    page: Page,
+    pattern: RegExp,
+): Promise<boolean> {
+    return page.evaluate(
+        ({ source, flags }) => {
+            const regex = new RegExp(source, flags);
+            const candidates = Array.from(
+                document.querySelectorAll<
+                    HTMLButtonElement | HTMLInputElement | HTMLAnchorElement
+                >(
+                    'button, input[type="submit"], input[type="button"], a.btn, a[role="button"]',
+                ),
+            );
+
+            for (const candidate of candidates) {
+                const element = candidate as HTMLElement;
+                const style = window.getComputedStyle(element);
+                if (
+                    style.display === 'none' ||
+                    style.visibility === 'hidden' ||
+                    style.opacity === '0'
+                ) {
+                    continue;
+                }
+                if (element.offsetParent === null && style.position !== 'fixed') {
+                    continue;
+                }
+
+                const text =
+                    candidate instanceof HTMLInputElement
+                        ? (candidate.value || '').trim()
+                        : (candidate.textContent || '').trim();
+                if (!text) {
+                    continue;
+                }
+
+                if (regex.test(text)) {
+                    element.click();
+                    return true;
+                }
+            }
+
+            return false;
+        },
+        { source: pattern.source, flags: pattern.flags },
+    );
+}
+
 async function fillLoginForm(
     page: Page,
     school: SchoolConfig,
@@ -58,14 +135,37 @@ async function fillLoginForm(
     password: string,
     timeoutMs: number,
 ): Promise<void> {
-    const continueButton = await page.$(
-        'button#wayf_submit_button, input#wayf_submit_button, button[name="Select"], a.btn-primary',
+    let usernameVisible = await waitForVisibleSelector(
+        page,
+        school.selectors.username,
+        1_500,
     );
 
-    if (continueButton) {
-        const visible = (await continueButton.boundingBox()) !== null;
-        if (visible) {
-            await continueButton.click();
+    if (!usernameVisible) {
+        const manualLoginOpened =
+            (await clickVisibleIfExists(
+                page,
+                'button#dropdownMenuButton, button[aria-controls="dropdown-loginmenu"], button[data-bs-target="#dropdown-loginmenu"]',
+            )) || (await clickButtonByText(page, /manuelles login|manual login/i));
+
+        if (manualLoginOpened) {
+            await new Promise((resolve) => setTimeout(resolve, 250));
+            usernameVisible = await waitForVisibleSelector(
+                page,
+                school.selectors.username,
+                2_000,
+            );
+        }
+    }
+
+    if (!usernameVisible) {
+        const continueClicked =
+            (await clickVisibleIfExists(
+                page,
+                'button#wayf_submit_button, input#wayf_submit_button, button[name="Select"], a.btn-primary',
+            )) || (await clickButtonByText(page, /continue|weiter/i));
+
+        if (continueClicked) {
             await page.waitForNavigation({ waitUntil: 'domcontentloaded' }).catch(() => undefined);
         }
     }
@@ -114,6 +214,7 @@ async function waitForSessionCookie(
     page: Page,
     school: SchoolConfig,
     timeoutMs: number,
+    strictCredentialValidation: boolean,
 ): Promise<string> {
     const endTime = Date.now() + timeoutMs;
 
@@ -128,7 +229,7 @@ async function waitForSessionCookie(
             return errorNodes
                 .map((node) => node.textContent?.trim() || '')
                 .find((text) =>
-                    /incorrect|invalid|ungültig|falsch|fehler/i.test(text),
+                    /incorrect|invalid|ungültig|falsch|fehler|fehlgeschlagen|versuchen sie es nochmal/i.test(text),
                 ) || null;
         }).catch(() => null);
 
@@ -136,16 +237,44 @@ async function waitForSessionCookie(
             throw new Error('INVALID_CREDENTIALS');
         }
 
+        const loginContext = await page
+            .evaluate(() => {
+                const url = window.location.href.toLowerCase();
+                const onLoginRoute =
+                    url.includes('/login/') ||
+                    url.includes('loginredirect');
+                const hasUsername = Boolean(
+                    document.querySelector(
+                        'form#login input[name="username"], form.login-form input[name="username"], input#username, input[name="username"]',
+                    ),
+                );
+                const hasPassword = Boolean(
+                    document.querySelector(
+                        'form#login input[name="password"], form.login-form input[name="password"], input#password, input[name="password"]',
+                    ),
+                );
+                return { onLoginRoute, hasLoginForm: hasUsername && hasPassword };
+            })
+            .catch(() => ({ onLoginRoute: false, hasLoginForm: false }));
+
         const cookies = await page.cookies(school.moodleUrl);
         const hasSession = cookies.some((cookie) => {
             const name = cookie.name.toLowerCase();
             return name.includes('moodlesession') && !name.includes('test');
         });
 
-        if (hasSession) {
+        if (hasSession && !loginContext.onLoginRoute && !loginContext.hasLoginForm) {
             return cookies
                 .map((cookie) => `${cookie.name}=${cookie.value}`)
                 .join('; ');
+        }
+
+        if (
+            strictCredentialValidation &&
+            hasSession &&
+            (loginContext.onLoginRoute || loginContext.hasLoginForm)
+        ) {
+            throw new Error('INVALID_CREDENTIALS');
         }
 
         await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -195,7 +324,12 @@ export async function loginWithPuppeteer(
             await fillLoginForm(page, school, username, password, timeoutMs);
         }
 
-        const cookies = await waitForSessionCookie(page, school, timeoutMs);
+        const cookies = await waitForSessionCookie(
+            page,
+            school,
+            timeoutMs,
+            Boolean(username && password),
+        );
 
         await context.close().catch(() => undefined);
 
